@@ -39,8 +39,10 @@ body {
 }
 
 .content {
+  /*
   margin-top: 40px;
   margin-left: 220px;
+  */
   padding: 10px;
   overflow-y: auto;
 }

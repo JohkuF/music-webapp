@@ -132,7 +132,7 @@ def insert_into_uploads(username: str, filepath: str, filename: str):
         )
         INSERT INTO uploads (user_id, upload_time, filepath, filename)
         VALUES ((SELECT id from user_data), NOW()::TIMESTAMP, 'data/', 'test.txt');
-"""
+        """
     )
 
 
