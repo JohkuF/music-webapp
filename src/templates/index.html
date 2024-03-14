@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="fi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Your Title Here</title>
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="{{ url_for('static', filename='styles.css') }}"
+    />
+  </head>
+  <body>
+    {% if session.username %} {% extends 'base.html' %} {% block content %}
+    <div class="long-content">
+      <h1>Welcome to the Home Page</h1>
+      <p>This is some content for the home page.</p>
+    </div>
+    {% endblock %}{% else %}
+    <div>
+      <form action="/login" method="POST">
+        <div>
+          <div>
+            <h1>Kirjaudu</h1>
+            <p>
+              Tunnus:<br />
+              <input type="text" name="username" />
+            </p>
+            <p>
+              Salasana:<br />
+              <input type="password" name="password" />
+            </p>
+            <input type="submit" value="Kirjaudu" />
+          </div>
+        </div>
+      </form>
+      <div>
+        <h1>Rekistöröidy</h1>
+        <form action="/signup" method="POST">
+          <p>
+            Tunnus:<br />
+            <input type="text" name="username" />
+          </p>
+          <p>
+            Salasana:<br />
+            <input type="password" name="password" />
+          </p>
+          <input type="submit" value="Kirjaudu" />
+        </form>
+      </div>
+    </div>
+    {% endif %}
+  </body>
+</html>

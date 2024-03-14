@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:14.5
+    env_file:
+      - .env
+    ports:
+      - 8123:5432
+    volumes:
+      - ${POSTGRES_VOLUME}:/var/lib/postgres/data
+    environment:
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+
+volumes:
+  pgdata:
+    external: true

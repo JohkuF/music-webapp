@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="fi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Your Title Here</title>
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="{{ url_for('static', filename='styles.css') }}"
+    />
+  </head>
+
+  <form action="/send" method="POST">
+    Viesti: <br />
+    <textarea name="content" rows="3" cols="40"></textarea>
+    <br />
+    <input type="submit" value="Lähetä" />
+  </form>
+</html>

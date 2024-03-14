@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="fi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Your Title Here</title>
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="{{ url_for('static', filename='styles.css') }}"
+    />
+  </head>
+
+  {% if session.username %} {% extends 'base.html' %} {% block content %}
+  Viestien määrä: {{ count }}
+  <hr />
+  {% for message in messages %} {{ message.content }}
+  <hr />
+  {% endfor %}
+  <a href="/new">Lähetä viesti</a>
+
+  {% endblock %} {% endif %}
+</html>
