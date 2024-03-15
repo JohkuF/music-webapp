@@ -22,75 +22,147 @@
     />
   </head>
   <body>
-    {% if session.username %} {% extends 'base.html' %} {% block content %}
-    <div class="long-content">
-      <h1>Welcome to the Home Page</h1>
-      <p>This is some content for the home page.</p>
-    </div>
-    {% endblock %}{% else %}
-    <div class="row">
-      <div class="col-sm-6 mb-3 mb-sm-0">
-        <p class="fs-1">Login</p>
-        <form action="/login" method="POST">
-          <div class="mb-3">
-            <label for="exampleInputEmail1" class="form-label"
-              >Email address</label
-            >
-            <input
-              type="email"
-              class="form-control"
-              id="exampleInputEmail1"
-              aria-describedby="emailHelp"
-            />
-            <div id="emailHelp" class="form-text">
-              We'll never share your email with anyone else.
-            </div>
-          </div>
-          <div class="mb-3">
-            <label for="exampleInputPassword1" class="form-label"
-              >Password</label
-            >
-            <input
-              type="password"
-              class="form-control"
-              id="exampleInputPassword1"
-            />
-          </div>
-          <div class="mb-3 form-check"></div>
-          <button type="submit" class="btn btn-primary">Submit</button>
-        </form>
+    <div class="container-fluid" style="height: 100%">
+      {% if session.username %} {% extends 'base.html' %} {% block content %}
+      <div class="long-content">
+        <h1>Welcome to the Home Page</h1>
+        <p>This is some content for the home page.</p>
       </div>
-      <div class="col-sm-6">
-        <p class="fs-1">Login</p>
-        <form action="/signup" method="POST">
-          <div class="mb-3">
-            <label for="exampleInputEmail1" class="form-label"
-              >Email address</label
-            >
-            <input
-              type="email"
-              class="form-control"
-              id="exampleInputEmail1"
-              aria-describedby="emailHelp"
-            />
-            <div id="emailHelp" class="form-text">
-              We'll never share your email with anyone else.
+      {% endblock %}{% else %}
+      <nav
+        class="navbar navbar-expand-sm bg-dark bg-gradient row"
+        data-bs-theme="dark"
+      >
+        <div class="container-fluid">
+          <a class="navbar-brand" href="/home">oof.fi</a>
+          <button
+            class="navbar-toggler"
+            type="button"
+            data-bs-toggle="collapse"
+            data-bs-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent"
+            aria-expanded="false"
+            aria-label="Toggle navigation"
+          >
+            <span class="navbar-toggler-icon"></span>
+          </button>
+          <div class="collapse navbar-collapse" id="navbarSupportedContent">
+            <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+              <!-- Changed class to navbar-nav and ms-auto -->
+              <li class="nav-item me-2">
+                <a
+                  class="button btn btn-outline-warning"
+                  data-bs-toggle="collapse"
+                  href="#collapseLogin"
+                  role="button"
+                  aria-controls="collapseLogin"
+                >
+                  Login
+                </a>
+              </li>
+              <li class="nav-item">
+                <a
+                  class="button btn btn-outline-warning"
+                  data-bs-toggle="collapse"
+                  href="#collapseSignup"
+                  role="button"
+                  aria-controls="collapseSignup"
+                >
+                  Signup
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </nav>
+
+      <div class="collapse row" id="collapseLogin">
+        <div class="card card-body">
+          <p>Login</p>
+          <form action="/login" method="POST">
+            <div class="mb-3">
+              <label for="exampleInputEmail1" class="form-label"
+                >username</label
+              >
+              <!-- TODO: Fix name= -> To be email and username is seperate
+                TODO: change type to email
+              -->
+              <input
+                type="text"
+                name="username"
+                class="form-control"
+                id="exampleInputEmail1"
+                aria-describedby="emailHelp"
+              />
+              <div id="emailHelp" class="form-text">
+                We'll never share your email with anyone else.
+              </div>
             </div>
-          </div>
-          <div class="mb-3">
-            <label for="exampleInputPassword1" class="form-label"
-              >Password</label
-            >
-            <input
-              type="password"
-              class="form-control"
-              id="exampleInputPassword1"
-            />
-          </div>
-          <div class="mb-3 form-check"></div>
-          <button type="submit" class="btn btn-primary">Submit</button> 
+            <div class="mb-3">
+              <label for="exampleInputPassword1" class="form-label"
+                >Password</label
+              >
+              <input
+                name="password"
+                type="password"
+                class="form-control"
+                id="exampleInputPassword1"
+              />
+            </div>
+            <div class="mb-3 form-check"></div>
+            <button type="submit" class="btn btn-primary">Submit</button>
+          </form>
+        </div>
       </div>
+      <div class="collapse row" id="collapseSignup">
+        <div class="card card-body">
+          <p>Sign up</p>
+          <form action="/signup" method="POST">
+            <div class="mb-3">
+              <label for="exampleInputEmail1" class="form-label"
+                >Username</label
+              >
+              <!-- TODO: Fix name= -> To be email and username is seperate
+                TODO: change type to email
+              -->
+              <input
+                type="text"
+                name="username"
+                class="form-control"
+                id="exampleInputEmail1"
+                aria-describedby="emailHelp"
+              />
+              <div id="emailHelp" class="form-text">
+                We'll never share your email with anyone else.
+              </div>
+            </div>
+            <div class="mb-3">
+              <label for="exampleInputPassword1" class="form-label"
+                >Password</label
+              >
+              <input
+                name="password"
+                type="password"
+                class="form-control"
+                id="exampleInputPassword1"
+              />
+            </div>
+            <div class="mb-3 form-check"></div>
+            <button type="submit" class="btn btn-primary">Submit</button>
+          </form>
+        </div>
+      </div>
+
+      <div
+        class="p-3 mb-2 bg-success-subtle text-success-emphasis text-center row"
+        style="height: 100%"
+      >
+        <h1>Welcome to oof.fi</h1>
+        <h4>a music streaming website</h4>
+        <p>Listen music & upload own music</p>
+      </div>
+
+      {% endif %}
     </div>
-    {% endif %}
   </body>
 </html>
