@@ -137,6 +137,7 @@ def insert_into_uploads(username: str, filepath: str, filename: str):
 
 
 @app.route("/upload/", methods=["GET", "POST"])
+@check_login
 def upload_file():
 
     if request.method == "POST":

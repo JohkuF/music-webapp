@@ -1,14 +1,21 @@
 CREATE TABLE users (
 	id SERIAL PRIMARY KEY,
 	username TEXT,
-	password TEXT
+	password TEXT,
+	role TEXT
 );
 
-CREATE TABLE messages (id SERIAL PRIMARY KEY, content TEXT);
+CREATE TABLE messages (
+	id SERIAL PRIMARY KEY,
+	context_ INT REFERENCES boards(id),
+	user_id INT REFERENCES users(id),
+	upload_time TIMESTAMP,
+	content TEXT);
 
 CREATE TABLE uploads (
 	id SERIAL PRIMARY KEY,
 	user_id INT REFERENCES messages(id),
+	--message_board INT REFERENCES boards(id),
 	upload_time TIMESTAMP,
 	song_name TEXT,
 	song_description TEXT,
