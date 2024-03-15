@@ -151,6 +151,8 @@ def upload_file():
             )
             db.session.commit()
 
+            # TODO: check if file already exists.
+
             file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
             return redirect(url_for("upload_file", filename=filename))
 
