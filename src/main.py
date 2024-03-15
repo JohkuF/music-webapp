@@ -1,13 +1,16 @@
 import os
-from dotenv import load_dotenv
-import functools
-from flask import Flask
-from flask import render_template, request, session, redirect, flash, url_for
-from flask_sqlalchemy import SQLAlchemy
 
+from flask import Flask
 from sqlalchemy import text
-from werkzeug.security import check_password_hash, generate_password_hash
+from dotenv import load_dotenv
+from flask_sqlalchemy import SQLAlchemy
 from werkzeug.utils import secure_filename
+from flask import render_template, request, session, redirect, flash, url_for
+from werkzeug.security import check_password_hash, generate_password_hash
+
+from utils import check_login
+from sql_commands import SQL_FILE_UPLOAD
+
 
 app = Flask(__name__, template_folder="templates")
 
@@ -17,7 +20,6 @@ app.secret_key = os.getenv("SECRET_KEY")
 POSTGRES_USER_PASSWORD = os.getenv("POSTGRES_USER_PASSWORD")
 POSTGRES_USER = os.getenv("POSTGRES_USER")
 
-
 app.config["SQLALCHEMY_DATABASE_URI"] = (
     f"postgresql://{POSTGRES_USER}:{POSTGRES_USER_PASSWORD}@localhost:8123/music-app"
 )
@@ -26,17 +28,6 @@ app.config["UPLOAD_FOLDER"] = os.getenv("UPLOAD_FOLDER")
 
 
 db = SQLAlchemy(app)
-
-
-def check_login(func):
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        # Check if user is logged in
-        if "username" not in session:
-            return redirect("/")
-        return func(*args, **kwargs)
-
-    return wrapper
 
 
 @app.route("/")
@@ -123,19 +114,6 @@ def allowed_file(filename):
     return True
 
 
-def insert_into_uploads(username: str, filepath: str, filename: str):
-
-    sql = text(
-        """
-        with user_data AS (
-	        SELECT id FROM users WHERE username = 'johku'
-        )
-        INSERT INTO uploads (user_id, upload_time, filepath, filename)
-        VALUES ((SELECT id from user_data), NOW()::TIMESTAMP, 'data/', 'test.txt');
-        """
-    )
-
-
 @app.route("/upload/", methods=["GET", "POST"])
 @check_login
 def upload_file():
@@ -161,31 +139,9 @@ def upload_file():
             return redirect(request.url)
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
-            sql = text(
-                """
-                with user_data AS (
-                SELECT id FROM users WHERE username = (:username)
-                )
-                INSERT INTO uploads (
-                    user_id,
-                    upload_time,
-                    song_name,
-                    song_description,
-                    filepath,
-                    filename
-                    )
-                    VALUES (
-                    (SELECT id from user_data),
-                    NOW()::TIMESTAMP,
-                    (:songName),
-                    (:description),
-                    (:filepath),
-                    (:filename)
-                );
-            """
-            )
+
             db.session.execute(
-                sql,
+                SQL_FILE_UPLOAD,
                 {
                     "username": username,
                     "songName": songName,
@@ -195,6 +151,8 @@ def upload_file():
                 },
             )
             db.session.commit()
+
+            # TODO: check if file already exists.
 
             file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
             return redirect(url_for("upload_file", filename=filename))
