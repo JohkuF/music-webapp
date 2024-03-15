@@ -6,7 +6,15 @@ CREATE TABLE users (
 
 CREATE TABLE messages (id SERIAL PRIMARY KEY, content TEXT);
 
-CREATE TABLE uploads (id SERIAL PRIMARY KEY, user_id INT REFERENCES messages(id), upload_time TIMESTAMP, filepath TEXT, filename TEXT)
+CREATE TABLE uploads (
+	id SERIAL PRIMARY KEY,
+	user_id INT REFERENCES messages(id),
+	upload_time TIMESTAMP,
+	song_name TEXT,
+	song_description TEXT,
+	filepath TEXT,
+	filename TEXT
+)
 
 CREATE ROLE app WITH PASSWORD 'INSERT PASS';
 
@@ -15,11 +23,27 @@ GRANT CONNECT ON DATABASE "music-app" TO app;
 GRANT INSERT ON messages TO app;
 GRANT SELECT ON messages TO app;
 GRANT SELECT, INSERT ON users TO app;
-GRANT USAGE ON SEQUENCE messages_id_seq, users_id_seq TO app;
+GRANT SELECT, INSERT ON uploads to app;
+GRANT USAGE ON SEQUENCE uploads_id_seq, messages_id_seq, users_id_seq TO app;
 
 
 -- Other useful comments
 with user_data AS (
-	SELECT id FROM users WHERE username = 'namename'
+	SELECT id FROM users WHERE username = 'johku'
 )
-INSERT INTO uploads (user_id, upload_time, filepath, filename) VALUES ((SELECT id from user_data), NOW()::TIMESTAMP, 'data/', 'test.txt');
+INSERT INTO uploads (
+	user_id,
+	upload_time,
+	song_name,
+	song_description,
+	filepath,
+	filename
+	)
+	VALUES (
+	(SELECT id from user_data),
+	NOW()::TIMESTAMP,
+	'testi',
+	'oaod',
+	'data/',
+	'test.txt'
+);
