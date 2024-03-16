@@ -21,7 +21,7 @@ POSTGRES_USER_PASSWORD = os.getenv("POSTGRES_USER_PASSWORD")
 POSTGRES_USER = os.getenv("POSTGRES_USER")
 
 app.config["SQLALCHEMY_DATABASE_URI"] = (
-    f"postgresql://{POSTGRES_USER}:{POSTGRES_USER_PASSWORD}@localhost:8123/music-app"
+    f"postgresql://{POSTGRES_USER}:{POSTGRES_USER_PASSWORD}@localhost:8123/app"
 )
 
 app.config["UPLOAD_FOLDER"] = os.getenv("UPLOAD_FOLDER")
@@ -100,7 +100,9 @@ def signup():
 
     hash_pass = generate_password_hash(request.form["password"])
 
-    sql = text("INSERT INTO users (username, password) VALUES (:username, :password)")
+    sql = text(
+        "INSERT INTO users (username, password, role) VALUES (:username, :password, 'user')"
+    )
     db.session.execute(sql, {"username": username, "password": hash_pass})
     db.session.commit()
 
