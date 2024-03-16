@@ -131,10 +131,10 @@ def upload_file():
         print(request.form)
         # TODO: use pydantic
         username = session["username"]
-        songName = request.form["songName"]
-        description = request.form.get("description", None)
-        if description == "":
-            description = None
+        song_name = request.form["songName"]
+        song_description = request.form.get("description", None)
+        if song_description == "":
+            song_description = None
 
         if file.filename == "":
             flash("No selected file")
@@ -146,8 +146,8 @@ def upload_file():
                 SQL_FILE_UPLOAD,
                 {
                     "username": username,
-                    "songName": songName,
-                    "description": description,
+                    "song_name": song_name,
+                    "song_description": song_description,
                     "filepath": app.config["UPLOAD_FOLDER"],
                     "filename": filename,
                 },
