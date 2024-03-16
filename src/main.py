@@ -9,7 +9,11 @@ from flask import render_template, request, session, redirect, flash, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from utils import check_login
-from sql_commands import SQL_FILE_UPLOAD
+from sql_commands import (
+    SQL_FILE_UPLOAD,
+    SQL_SEND_MESSAGE_GENERAL,
+    SQL_FETCH_MESSAGES_GENERAL,
+)
 
 
 app = Flask(__name__, template_folder="templates")
@@ -45,8 +49,9 @@ def home():
 
 @app.route("/chat")
 def chat():
-    result = db.session.execute(text("SELECT content FROM messages"))
+    result = db.session.execute(SQL_FETCH_MESSAGES_GENERAL)
     messages = result.fetchall()
+    print(messages)
 
     return render_template("chat.html", messages=messages, count=len(messages))
 
@@ -59,8 +64,10 @@ def new():
 @app.route("/send", methods=["POST"])
 def send():
     content = request.form["content"]
-    sql = text("INSERT INTO messages (content) VALUES (:content)")
-    db.session.execute(sql, {"content": content})
+    SQL_SEND_MESSAGE_GENERAL
+    db.session.execute(
+        SQL_SEND_MESSAGE_GENERAL, {"username": session["username"], "content": content}
+    )
     db.session.commit()
     return redirect("/chat")
 

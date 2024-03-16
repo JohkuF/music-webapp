@@ -31,3 +31,31 @@ SQL_FILE_UPLOAD = text(
     );
 """
 )
+
+
+SQL_SEND_MESSAGE_GENERAL = text(
+    """
+    WITH user_data AS (
+        SELECT id FROM users WHERE username = :username
+    )
+    
+    INSERT INTO messages (
+        user_id,
+        upload_time,
+        content
+    )
+    VALUES (
+        (SELECT id FROM user_data),
+        NOW(),
+        :content
+    )
+"""
+)
+
+SQL_FETCH_MESSAGES_GENERAL = text(
+    """
+    SELECT users.username, messages.content
+    FROM messages
+    JOIN users ON messages.user_id = users.id;    
+"""
+)
