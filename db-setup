@@ -1,67 +1,8 @@
-CREATE TABLE users (
-    id SERIAL PRIMARY KEY,
-    username TEXT,
-    password TEXT,
-    role TEXT
-);
-
-CREATE TABLE messages (
-    id SERIAL PRIMARY KEY,
-    song_id INT REFERENCES songs(id),
-    user_id INT REFERENCES users(id),
-    upload_time TIMESTAMP,
-    content TEXT
-);
-
-CREATE TABLE songs (
-    id SERIAL PRIMARY KEY,
-    song_name TEXT,
-    song_description TEXT
-);
-
-CREATE TABLE playlists (
-    id SERIAL PRIMARY KEY,
-    user_id INT REFERENCES users(id),
-    playlist_name TEXT,
-    created_at TIMESTAMP
-);
-
-CREATE TABLE playlist_song (
-    playlist_id INT REFERENCES playlists(id),
-    song_id INT REFERENCES songs(id),
-    PRIMARY KEY (playlist_id, song_id)
-);
-
-CREATE TABLE likes (
-    id SERIAL PRIMARY KEY,
-    user_id INT REFERENCES users(id),
-    target_id INT,
-    target_type TEXT,
-    vote_type TEXT
-);
-
-CREATE TABLE uploads (
-    id SERIAL PRIMARY KEY,
-    user_id INT REFERENCES users(id),
-    song_id INT REFERENCES songs(id),
-    upload_time TIMESTAMP,
-    filepath TEXT,
-    filename TEXT
-);
-
-
-CREATE ROLE app WITH PASSWORD 'INSERT PASS';
-
-GRANT CONNECT ON DATABASE "music-app" TO app;
-
-GRANT INSERT ON messages TO app;
-GRANT SELECT ON messages TO app;
-GRANT SELECT, INSERT ON users TO app;
-GRANT SELECT, INSERT ON uploads to app;
-GRANT USAGE ON SEQUENCE uploads_id_seq, messages_id_seq, users_id_seq TO app;
+CREATE ROLE app_user WITH LOGIN PASSWORD 'your_password';
 
 
 -- Other useful comments
+
 with user_data AS (
 	SELECT id FROM users WHERE username = 'johku'
 )
