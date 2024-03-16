@@ -1,15 +1,23 @@
+version: '3.8'
+
 services:
   postgres:
     image: postgres:14.5
     env_file:
       - .env
     ports:
-      - 8123:5432
+      - "8123:5432"
     volumes:
-      - ${POSTGRES_VOLUME}:/var/lib/postgres/data
+      - pgdata2:/var/lib/postgres/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     environment:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    networks:
+      - postgres_network
 
 volumes:
-  pgdata:
-    external: true
+  pgdata2:
+
+networks:
+  postgres_network:
+    driver: bridge

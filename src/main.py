@@ -9,7 +9,11 @@ from flask import render_template, request, session, redirect, flash, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from utils import check_login
-from sql_commands import SQL_FILE_UPLOAD
+from sql_commands import (
+    SQL_FILE_UPLOAD,
+    SQL_SEND_MESSAGE_GENERAL,
+    SQL_FETCH_MESSAGES_GENERAL,
+)
 
 
 app = Flask(__name__, template_folder="templates")
@@ -21,7 +25,7 @@ POSTGRES_USER_PASSWORD = os.getenv("POSTGRES_USER_PASSWORD")
 POSTGRES_USER = os.getenv("POSTGRES_USER")
 
 app.config["SQLALCHEMY_DATABASE_URI"] = (
-    f"postgresql://{POSTGRES_USER}:{POSTGRES_USER_PASSWORD}@localhost:8123/music-app"
+    f"postgresql://{POSTGRES_USER}:{POSTGRES_USER_PASSWORD}@localhost:8123/app"
 )
 
 app.config["UPLOAD_FOLDER"] = os.getenv("UPLOAD_FOLDER")
@@ -45,8 +49,9 @@ def home():
 
 @app.route("/chat")
 def chat():
-    result = db.session.execute(text("SELECT content FROM messages"))
+    result = db.session.execute(SQL_FETCH_MESSAGES_GENERAL)
     messages = result.fetchall()
+    print(messages)
 
     return render_template("chat.html", messages=messages, count=len(messages))
 
@@ -59,8 +64,10 @@ def new():
 @app.route("/send", methods=["POST"])
 def send():
     content = request.form["content"]
-    sql = text("INSERT INTO messages (content) VALUES (:content)")
-    db.session.execute(sql, {"content": content})
+    SQL_SEND_MESSAGE_GENERAL
+    db.session.execute(
+        SQL_SEND_MESSAGE_GENERAL, {"username": session["username"], "content": content}
+    )
     db.session.commit()
     return redirect("/chat")
 
@@ -100,7 +107,9 @@ def signup():
 
     hash_pass = generate_password_hash(request.form["password"])
 
-    sql = text("INSERT INTO users (username, password) VALUES (:username, :password)")
+    sql = text(
+        "INSERT INTO users (username, password, role) VALUES (:username, :password, 'user')"
+    )
     db.session.execute(sql, {"username": username, "password": hash_pass})
     db.session.commit()
 
@@ -129,10 +138,10 @@ def upload_file():
         print(request.form)
         # TODO: use pydantic
         username = session["username"]
-        songName = request.form["songName"]
-        description = request.form.get("description", None)
-        if description == "":
-            description = None
+        song_name = request.form["songName"]
+        song_description = request.form.get("description", None)
+        if song_description == "":
+            song_description = None
 
         if file.filename == "":
             flash("No selected file")
@@ -144,8 +153,8 @@ def upload_file():
                 SQL_FILE_UPLOAD,
                 {
                     "username": username,
-                    "songName": songName,
-                    "description": description,
+                    "song_name": song_name,
+                    "song_description": song_description,
                     "filepath": app.config["UPLOAD_FOLDER"],
                     "filename": filename,
                 },
