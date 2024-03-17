@@ -29,6 +29,14 @@
           </div>
         </div>
         {% endfor %}
+        <button
+          class="btn"
+          hx-get="/contacts/?page=2"
+          hx-target="#replaceMe"
+          hx-swap="outerHTML"
+        >
+          Load More Comments...
+        </button>
       </div>
     </div>
   </div>
