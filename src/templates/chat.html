@@ -12,42 +12,7 @@
   </head>
 
   {% if session.username %} {% extends 'base.html' %} {% block content %}
-  <div class="container justify-content-center mt-5">
-    <div class="col-md-12 col-lg-8">
-      <div class="card shadow-0 border">
-        <div class="card-body p-4">
-          <form action="/send" method="POST">
-            <div class="form-outline mb-4 d-flex align-items-center">
-              <input
-                name="content"
-                style="width: 80%"
-                type="text"
-                class="form-control me-2"
-                placeholder="Type comment..."
-              />
-              <button class="btn btn-primary btn-block" style="width: 20%">
-                Send
-              </button>
-            </div>
-          </form>
-
-          {% for message in messages %}
-          <div class="card mb-4">
-            <div class="card-body">
-              <p>{{ message.content }}</p>
-
-              <div class="d-flex justify-content-between">
-                <div class="d-flex flex-row align-items-center">
-                  <p class="small mb-0 ms-2">{{ message.username }}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-          {% endfor %}
-        </div>
-      </div>
-    </div>
-
+    {% include "chat-component.html"%}
     {% endblock %} {% endif %}
   </div>
 </html>
