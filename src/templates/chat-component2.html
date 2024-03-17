@@ -1,8 +1,17 @@
+<script src="https://unpkg.com/htmx.org@1.9.11"></script>
 <div class="container justify-content-center mt-5">
   <div class="col-md-12 col-lg-8">
     <div class="card shadow-0 border">
       <div class="card-body p-4">
-        <form action="/send" method="POST">
+        <!--
+
+          <form action="/send/{{song_id}}" method="POST">
+        -->
+        <form
+          id="commentForm"
+          hx-post="/send/{{song_id}}"
+          hx-target="#messages-{{song_id}}"
+        >
           <div class="form-outline mb-4 d-flex align-items-center">
             <input
               name="content"
@@ -16,28 +25,46 @@
             </button>
           </div>
         </form>
-        {% for message in messages|reverse %}
-        <div class="card mb-4">
-          <div class="card-body">
-            <p>{{ message.content }}</p>
-
-            <div class="d-flex justify-content-between">
-              <div class="d-flex flex-row align-items-center">
-                <p class="small mb-0 ms-2">{{ message.username }}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-        {% endfor %}
-        <button
-          class="btn"
-          hx-get="/contacts/?page=2"
-          hx-target="#replaceMe"
-          hx-swap="outerHTML"
-        >
-          Load More Comments...
-        </button>
+        <div id="messagesContainer"></div>
       </div>
     </div>
   </div>
+  <script>
+    // get song_id
+
+    // Fetch messages
+
+    async function fetchMessages() {
+      var id = "{{ song_id }}";
+      console.log("FETCH ID", id);
+
+      try {
+        const response = await fetch(`/messages/${id}`);
+        const messages = await response.json();
+        //console.log(messages);
+
+        // Add messages to the containers
+        const messagesContainer = document.getElementById("messagesContainer");
+        messages.forEach((message) => {
+          const messageCard = `
+            <div class="card mb-4" id="messages-${id}">
+              <div class="card-body">
+                <p>${message.content}</p>
+                <div class="d-flex justify-content-between">
+                  <div class="d-flex flex-row align-items-center">
+                    <p class="small mb-0 ms-2">${message.username}</p>
+                  </div>
+                </div>
+              </div>
+            </div>`;
+          //console.log(messageCard);
+          messagesContainer.insertAdjacentHTML("beforeend", messageCard);
+        });
+      } catch (error) {
+        console.error("Error fetching messages: ", error);
+      }
+    }
+
+    fetchMessages();
+  </script>
 </div>

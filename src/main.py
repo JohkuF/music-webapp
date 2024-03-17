@@ -5,7 +5,7 @@ from sqlalchemy import text
 from dotenv import load_dotenv
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.utils import secure_filename
-from flask import render_template, request, session, redirect, flash, url_for
+from flask import render_template, request, session, redirect, flash, url_for, jsonify
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from utils import check_login
@@ -58,6 +58,27 @@ def chat():
     return render_template("chat.html", messages=messages, count=len(messages))
 
 
+@app.route("/messages/<path:song_id>")
+def messages(song_id):
+    assert song_id == request.view_args["song_id"]
+    print(request.path)
+    print("\n\n\nID", song_id)
+    sql = text(
+        """SELECT users.username, messages.content
+        FROM messages
+        JOIN users ON messages.user_id = users.id
+        WHERE messages.song_id = {};""".format(
+            song_id
+        )
+    )
+
+    result = db.session.execute(sql)
+    messages = result.fetchall()
+    messages_list = [{"username": row[0], "content": row[1]} for row in messages]
+
+    return jsonify(messages_list)
+
+
 @app.route("/songs")
 def get_songs():
     sql = text("SELECT * FROM songs;")
@@ -71,15 +92,52 @@ def new():
     return render_template("new.html")
 
 
-@app.route("/send", methods=["POST"])
-def send():
+@app.route("/send/<path:song_id>", methods=["POST"])
+def send(song_id):
+    assert song_id == request.view_args["song_id"]
     content = request.form["content"]
-    SQL_SEND_MESSAGE_GENERAL
+    username = session["username"]
+    if song_id == 0 or song_id == None:
+        SQL_SEND_MESSAGE_GENERAL
+        db.session.execute(
+            SQL_SEND_MESSAGE_GENERAL,
+            {"username": session["username"], "content": content},
+        )
+        db.session.commit()
+        return redirect("/chat")
+
+    print("SONGPATH", song_id)
+
+    sql = text(
+        """
+    INSERT INTO messages (song_id, user_id, upload_time, content)
+    SELECT :song_id, id, NOW(), :content FROM users WHERE username = :username;
+    """
+    )
+
     db.session.execute(
-        SQL_SEND_MESSAGE_GENERAL, {"username": session["username"], "content": content}
+        sql, {"username": username, "song_id": song_id, "content": content}
     )
     db.session.commit()
-    return redirect("/chat")
+
+    # response_data = {"success": True, "message": "Data inserted successfully."}
+    # return jsonify(response_data)
+
+    # TODO: find better solution
+    response = f"""
+    <div class="card mb-4" id="messages-{song_id}">
+              <div class="card-body">
+                <p>{content}</p>
+                <div class="d-flex justify-content-between">
+                  <div class="d-flex flex-row align-items-center">
+                    <p class="small mb-0 ms-2">{username}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+    """
+
+    return response
 
 
 @app.route("/login", methods=["POST"])

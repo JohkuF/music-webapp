@@ -81,7 +81,8 @@
               role="tabpanel"
               aria-labelledby="list-{{song.id}}-list"
             >
-              {{ song.song_description }} {% include "chat-component2.html"%}
+              {% set song_id = song.id %} {{ song.song_description }} {% include
+              "chat-component2.html" %}
             </div>
             {% endfor %}
           </div>

@@ -59,3 +59,12 @@ SQL_FETCH_MESSAGES_GENERAL = text(
     JOIN users ON messages.user_id = users.id;    
 """
 )
+
+
+def SQL_FETCH_MESSAGES_ON_SONG(song_id: int):
+    return f"""
+    SELECT users.username, messages.content
+    FROM messages
+    JOIN users ON messages.user_id = users.id;    
+    WHERE messages.song_id = {song_id}
+"""
