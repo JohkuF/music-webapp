@@ -6,11 +6,12 @@
         <!--
 
           <form action="/send/{{song_id}}" method="POST">
-        -->
+          -->
         <form
           id="commentForm"
           hx-post="/send/{{song_id}}"
           hx-target="#messages-{{song_id}}"
+          onsubmit="submitForm(event)"
         >
           <div class="form-outline mb-4 d-flex align-items-center">
             <input
@@ -25,7 +26,7 @@
             </button>
           </div>
         </form>
-        <div id="messagesContainer"></div>
+        <div id="messagesContainer-{{song_id}}"></div>
       </div>
     </div>
   </div>
@@ -42,12 +43,15 @@
         const response = await fetch(`/messages/${id}`);
         const messages = await response.json();
         //console.log(messages);
-
+        var id_extra = 0;
         // Add messages to the containers
-        const messagesContainer = document.getElementById("messagesContainer");
+        const messagesContainer = document.getElementById(
+          `messagesContainer-${id}`
+        );
         messages.forEach((message) => {
+          console.log(id, message.content, message.username);
           const messageCard = `
-            <div class="card mb-4" id="messages-${id}">
+            <div class="card mb-4" id="messages-${id}-${id_extra}">
               <div class="card-body">
                 <p>${message.content}</p>
                 <div class="d-flex justify-content-between">
@@ -57,6 +61,7 @@
                 </div>
               </div>
             </div>`;
+          id_extra++;
           //console.log(messageCard);
           messagesContainer.insertAdjacentHTML("beforeend", messageCard);
         });
@@ -65,6 +70,39 @@
       }
     }
 
+    function submitForm(event) {
+      event.preventDefault();
+      const form = event.target;
+
+      const activeShowDiv = document.querySelector("div.active.show");
+      //console.log(activeShowDiv.id);
+
+      // TODO: get song id
+      const songId = parseInt(activeShowDiv.id.split("-")[1]);
+
+      const content = form.elements["content"].value;
+      console.log("SONGID", songId);
+      console.log("FOORM", form);
+      console.log("FORM", form.getAttribute("hx-post"));
+      /*
+       */
+
+      const formData = new FormData();
+      formData.append("content", content);
+
+      fetch(form.getAttribute("hx-post"), {
+        method: "POST",
+        body: new FormData(form),
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          // Clear input field
+          form.elements["content"].value = "";
+          // Fetch and display updated messages
+          fetchMessages();
+        })
+        .catch((error) => console.error("Error submitting form: ", error));
+    }
     fetchMessages();
   </script>
 </div>

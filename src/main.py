@@ -95,6 +95,7 @@ def new():
 @app.route("/send/<path:song_id>", methods=["POST"])
 def send(song_id):
     assert song_id == request.view_args["song_id"]
+    # print(request.form)
     content = request.form["content"]
     username = session["username"]
     if song_id == 0 or song_id == None:
@@ -106,7 +107,7 @@ def send(song_id):
         db.session.commit()
         return redirect("/chat")
 
-    print("SONGPATH", song_id)
+    print("SONGPATH", song_id, content)
 
     sql = text(
         """
@@ -119,7 +120,7 @@ def send(song_id):
         sql, {"username": username, "song_id": song_id, "content": content}
     )
     db.session.commit()
-
+    print("DATA EXECUTED")
     # response_data = {"success": True, "message": "Data inserted successfully."}
     # return jsonify(response_data)
 
