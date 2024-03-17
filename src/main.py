@@ -138,6 +138,37 @@ def send(song_id):
             </div>
     """
 
+    # Experimental fetch for all the messages again
+
+    sql = text(
+        """SELECT users.username, messages.content
+        FROM messages
+        JOIN users ON messages.user_id = users.id
+        WHERE messages.song_id = {};""".format(
+            song_id
+        )
+    )
+
+    result = db.session.execute(sql)
+    messages = result.fetchall()
+
+    # TODO: compine /messages and this fuggly thing to one function
+    response = ""
+    for message in reversed(messages):
+        print(message)
+        response += f"""
+            <div class="card mb-4" id="messages-{song_id}">
+              <div class="card-body">
+                <p>{message.content}</p>
+                <div class="d-flex justify-content-between">
+                  <div class="d-flex flex-row align-items-center">
+                    <p class="small mb-0 ms-2">{message.username}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+        """
+
     return response
 
 
