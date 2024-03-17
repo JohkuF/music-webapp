@@ -44,7 +44,9 @@ def index():
 @app.route("/home")
 @check_login
 def home():
-    return render_template("home.html")
+    songs = get_songs()
+    print(songs)
+    return render_template("home.html", songs=songs)
 
 
 @app.route("/chat")
@@ -54,6 +56,14 @@ def chat():
     print(messages)
 
     return render_template("chat.html", messages=messages, count=len(messages))
+
+
+@app.route("/songs")
+def get_songs():
+    sql = text("SELECT * FROM songs;")
+    result = db.session.execute(sql)
+    songs = result.fetchall()
+    return songs
 
 
 @app.route("/new")
