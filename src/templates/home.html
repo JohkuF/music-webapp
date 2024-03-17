@@ -28,6 +28,7 @@
               aria-controls="list-{{song.id}}"
             >
               <svg
+                id="play-{{song.id}}"
                 xmlns="http://www.w3.org/2000/svg"
                 width="16"
                 height="16"
@@ -44,13 +45,14 @@
                 />
               </svg>
               <svg
+                id="pause-{{song.id}}"
                 xmlns="http://www.w3.org/2000/svg"
                 width="16"
                 height="16"
                 fill="currentColor"
                 class="bi bi-pause-circle icon-pause d-none"
                 viewBox="0 0 16 16"
-                onclick="toggleIcon(this)"
+                onclick="toggleIcons(this)"
               >
                 <path
                   d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"
@@ -81,6 +83,8 @@
       </div>
     </div>
     <script>
+      // TODO: Add play when pressing Enter-key
+
       function toggleIcons(icon) {
         const listPlayIcons = document.querySelectorAll(".icon-play");
         const listPauseIcons = document.querySelectorAll(".icon-pause");
@@ -89,10 +93,22 @@
 
         // switch previous off
         const playIconsArray = Array.from(listPlayIcons); // Convert NodeList to array
+
         playIconsArray.forEach((item, index) => {
           var pauseIcon = listPauseIcons[index];
 
-          if (item.classList.contains("d-none")) {
+          // Int parse is to check if same button is pressed again -> Stop the music
+          if (
+            item.classList.contains("d-none") &&
+            parseInt(item.id.split("-")[1]) !== parseInt(icon.id.split("-")[1])
+          ) {
+            console.log(
+              "Item:",
+              parseInt(item.id.split("-")[1]),
+              "icon",
+              parseInt(icon.id.split("-")[1])
+            );
+
             item.classList.toggle("d-none");
             listPauseIcons[index].classList.toggle("d-none");
           }
