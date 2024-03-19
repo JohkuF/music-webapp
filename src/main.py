@@ -1,5 +1,5 @@
 import os
-
+import bleach
 from flask import Flask
 from sqlalchemy import text
 from dotenv import load_dotenv
@@ -95,6 +95,8 @@ def new():
 @app.route("/send/<path:song_id>", methods=["POST"])
 def send(song_id):
     assert song_id == request.view_args["song_id"]
+    song_id = bleach.clean(song_id)
+
     # print(request.form)
     content = request.form["content"]
     username = session["username"]
@@ -120,13 +122,28 @@ def send(song_id):
         sql, {"username": username, "song_id": song_id, "content": content}
     )
     db.session.commit()
-    print("DATA EXECUTED")
-    # response_data = {"success": True, "message": "Data inserted successfully."}
-    # return jsonify(response_data)
 
-    # TODO: find better solution
-    response = f"""
-    <div class="card mb-4" id="messages-{song_id}">
+    # Experimental fetch for all the messages again
+    sql = text(
+        """SELECT users.username, messages.content
+        FROM messages
+        JOIN users ON messages.user_id = users.id
+        WHERE messages.song_id = :song_id;"""
+    )
+
+    result = db.session.execute(sql, {"song_id": song_id})
+    messages = result.fetchall()
+
+    # TODO: compine /messages and this fuggly thing to one function
+    response = ""
+    for message in reversed(messages):
+        content = bleach.clean(message.content)
+        username = bleach.clean(message.username)
+
+        print(username, message.username, content, message.content, song_id)
+
+        response += f"""
+            <div class="card mb-4" id="messages-{song_id}">
               <div class="card-body">
                 <p>{content}</p>
                 <div class="d-flex justify-content-between">
@@ -136,38 +153,9 @@ def send(song_id):
                 </div>
               </div>
             </div>
-    """
-
-    # Experimental fetch for all the messages again
-
-    sql = text(
-        """SELECT users.username, messages.content
-        FROM messages
-        JOIN users ON messages.user_id = users.id
-        WHERE messages.song_id = {};""".format(
-            song_id
-        )
-    )
-
-    result = db.session.execute(sql)
-    messages = result.fetchall()
-
-    # TODO: compine /messages and this fuggly thing to one function
-    response = ""
-    for message in reversed(messages):
-        print(message)
-        response += f"""
-            <div class="card mb-4" id="messages-{song_id}">
-              <div class="card-body">
-                <p>{message.content}</p>
-                <div class="d-flex justify-content-between">
-                  <div class="d-flex flex-row align-items-center">
-                    <p class="small mb-0 ms-2">{message.username}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
         """
+
+    print(response)
 
     return response
 
