@@ -87,8 +87,40 @@
             {% endfor %}
           </div>
         </div>
+        <div
+          class="offcanvas offcanvas-bottom container text-center"
+          style="height: auto"
+          tabindex="-1"
+          data-bs-backdrop="false"
+          id="offcanvasScrolling"
+          aria-labelledby="offcanvasScrollingLabel"
+        >
+          <div class="row">
+            <div class="offcanvas-header col-4 col-lg-2">
+              <h5 class="offcanvas-title" id="offcanvasBottomLabel">
+                [[SONG NAME]]
+              </h5>
+            </div>
+            <div class="offcanvas-body small col-6 col-lg-8">
+              <div id="musicContainer">
+                <audio controls style="width: 100%"></audio>
+              </div>
+            </div>
+            <div
+              class="col-2 col-lg-1 d-flex align-items-center justify-content-center"
+            >
+              <button
+                type="button"
+                class="btn-close"
+                data-bs-dismiss="offcanvas"
+                aria-label="Close"
+              ></button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
+
     <script>
       // TODO: Add play when pressing Enter-key
 
@@ -124,6 +156,41 @@
         // Switch current on
         clickedIconPlay.classList.toggle("d-none");
         clickedIconPause.classList.toggle("d-none");
+
+        // Current song id
+        currentSongId = parseInt(clickedIconPlay.id.split("-")[1]);
+        getAudioSong(currentSongId);
+
+        // Toggle offcanvas on if not already
+        // Get reference to the offcanvas
+        const offcanvas = new bootstrap.Offcanvas(
+          document.getElementById("offcanvasScrolling")
+        );
+
+        console.log("OFF", offcanvas);
+
+        // Toggle the offcanvas
+        offcanvas.toggle();
+
+        console.log(currentSongId);
+      }
+
+      function getAudioSong(songId) {
+        songContainer = document.getElementById("musicContainer");
+
+        const songCard = `
+          <div id="musicContainer">
+            <audio controls autoplay style="width: 100%">
+              <source src="stream/${songId}" type="audio/mp3" />
+            </audio>
+          </div>
+        `;
+
+        // Replace the audio with the new one
+        //songContainer.insertAdjacentHTML("beforeend", songCard);
+        //songContainer.replaceWith(songCard);
+        songContainer.innerHTML = songCard;
+        //songContainer.innerHTML = songCard + songContainer.innerHTML;
       }
     </script>
     {% endblock %} {% endif %}
