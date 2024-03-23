@@ -279,7 +279,7 @@ def stream_music(music_id):
         # TODO propper error handling
         return "Naah"
 
-    @stream_with_context
+    # @stream_with_context
     def generate():
         count = 1
 
