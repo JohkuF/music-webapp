@@ -47,13 +47,11 @@
 
     async function fetchMessages() {
       var id = "{{ song_id }}";
-      console.log("FETCH ID", id);
 
       try {
         const response = await fetch(`/messages/${id}`);
         const messages = await response.json();
 
-        //console.log(messages);
         var id_extra = 0;
         // Add messages to the containers
         const messagesContainer = document.getElementById(
@@ -61,7 +59,6 @@
         );
 
         messages.reverse().forEach((message) => {
-          console.log(id, message.content, message.username);
           username = sanitize(message.username);
           content = sanitize(message.content);
 

@@ -1,6 +1,6 @@
 import os
 import bleach
-from flask import Flask
+from flask import Flask, Response, stream_with_context
 from sqlalchemy import text
 from dotenv import load_dotenv
 from flask_sqlalchemy import SQLAlchemy
@@ -17,6 +17,8 @@ from sql_commands import (
 
 
 app = Flask(__name__, template_folder="templates")
+# TODO: check if compressions if good tradeoff
+# from flask_compress import Compress
 
 load_dotenv(".env")
 app.secret_key = os.getenv("SECRET_KEY")
@@ -211,6 +213,7 @@ def allowed_file(filename):
     return True
 
 
+# TODO: add api admin command to turn of uploads
 @app.route("/upload/", methods=["GET", "POST"])
 @check_login
 def upload_file():
@@ -257,6 +260,40 @@ def upload_file():
 
     print("NO POST")
     return render_template("/upload.html")
+
+
+@app.route("/stream/<int:music_id>")
+@check_login
+def stream_music(music_id):
+    # TODO: add better logging for music streaming
+
+    sql = text(
+        """
+        SELECT filepath, filename FROM uploads
+        WHERE song_id = :song_id;
+        """
+    )
+    result = db.session.execute(sql, {"song_id": music_id})
+    filepath, filename = result.fetchone()
+
+    if not filepath or not filename:
+        # TODO propper error handling
+        return "Naah"
+
+    # @stream_with_context
+    def generate():
+        count = 1
+
+        with open(filepath + filename, "rb") as fwaw:
+            data = fwaw.read(1024 // 2)
+            while data:
+                yield data
+                data = fwaw.read(1024 // 2)
+                count += 1
+
+    response = Response(generate(), mimetype="audio/mp3")
+    response.headers["X-Accel-Buffering"] = "no"
+    return response
 
 
 if __name__ == "__main__":
