@@ -1,0 +1,89 @@
+<script src="https://unpkg.com/htmx.org@1.9.11"></script>
+<div class="container justify-content-center mt-5">
+  <div class="col-md-12 col-lg-8">
+    <div class="card shadow-0 border">
+      <div class="card-body p-4">
+        <form
+          id="commentForm"
+          hx-post="/send/{{song_id}}"
+          hx-target="#messagesContainer-{{song_id}}"
+        >
+          <div class="form-outline mb-4 d-flex align-items-center">
+            <input
+              required
+              id="commentInput"
+              name="content"
+              style="width: 80%"
+              type="text"
+              class="form-control me-2"
+              placeholder="Type comment..."
+            />
+
+            <button class="btn btn-primary btn-block" style="width: 20%">
+              Send
+            </button>
+          </div>
+        </form>
+        <div id="messagesContainer-{{song_id}}"></div>
+      </div>
+    </div>
+  </div>
+  <script>
+    // get song_id
+    function sanitize(string) {
+      const map = {
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#x27;",
+        "/": "&#x2F;",
+      };
+      const reg = /[&<>"'/]/gi;
+      return string.replace(reg, (match) => map[match]);
+    }
+
+    // Fetch messages
+
+    async function fetchMessages() {
+      var id = "{{ song_id }}";
+      console.log("FETCH ID", id);
+
+      try {
+        const response = await fetch(`/messages/${id}`);
+        const messages = await response.json();
+
+        //console.log(messages);
+        var id_extra = 0;
+        // Add messages to the containers
+        const messagesContainer = document.getElementById(
+          `messagesContainer-${id}`
+        );
+
+        messages.reverse().forEach((message) => {
+          console.log(id, message.content, message.username);
+          username = sanitize(message.username);
+          content = sanitize(message.content);
+
+          const messageCard = `
+            <div class="card mb-4" id="messages-${id}-${id_extra}">
+              <div class="card-body">
+                <p>${content}</p>
+                <div class="d-flex justify-content-between">
+                  <div class="d-flex flex-row align-items-center">
+                    <p class="small mb-0 ms-2">${username}</p>
+                  </div>
+                </div>
+              </div>
+            </div>`;
+          id_extra++;
+          messagesContainer.insertAdjacentHTML("beforeend", messageCard);
+        });
+      } catch (error) {
+        console.error("Error fetching messages: ", error);
+      }
+    }
+
+    fetchMessages();
+  </script>
+</div>
