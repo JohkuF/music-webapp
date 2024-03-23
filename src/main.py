@@ -252,6 +252,7 @@ def upload_file():
             # TODO: check if file already exists.
 
             file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
+            # TODO: -maybe useless redirect - Anyway its wrong
             return redirect(url_for("upload_file", filename=filename))
 
     print("NO POST")

@@ -1,5 +1,6 @@
 from sqlalchemy import text
 
+# TODO maybe songs_id_seq could go out of sync - maybe use id from first insert
 SQL_FILE_UPLOAD = text(
     """
     INSERT INTO songs (
