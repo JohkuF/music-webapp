@@ -64,8 +64,8 @@
                     />
                   </svg>
                 </div>
-                <div class="col-sm-8">
-                  <p class="m-0">{{ song.song_name }}</p>
+                <div class="col-sm-8" id="songNameContainer">
+                  <p class="m-0" id="songName">{{ song.song_name }}</p>
                 </div>
               </div>
             </a>
@@ -92,6 +92,7 @@
           style="height: auto"
           tabindex="-1"
           data-bs-backdrop="false"
+          data-bs-scroll="true"
           id="offcanvasScrolling"
           aria-labelledby="offcanvasScrollingLabel"
         >
@@ -103,7 +104,7 @@
             </div>
             <div class="offcanvas-body small col-6 col-lg-8">
               <div id="musicContainer">
-                <audio controls style="width: 100%"></audio>
+                <audio controls style="width: 100%" id="audio"></audio>
               </div>
             </div>
             <div
@@ -123,6 +124,7 @@
 
     <script>
       // TODO: Add play when pressing Enter-key
+      // TODO: FIX ANIMATIONS - STOP/PLAY FROM TOGGLE
 
       function toggleIcons(icon) {
         const listPlayIcons = document.querySelectorAll(".icon-play");
@@ -132,11 +134,22 @@
 
         // switch previous off
         const playIconsArray = Array.from(listPlayIcons); // Convert NodeList to array
+        var currentSong = -1;
+
+        // Get current playing song
+        /*
+        playIconsArray.forEach((item, index) => {
+          if (item.classList.contains("d-none")) {
+            currentSong =
+            item.parentElement.parentElement.parentElement.id.split("-")[1];
+            console.log("Current song", currentSong);
+          }
+        });
+        */
 
         playIconsArray.forEach((item, index) => {
-          var pauseIcon = listPauseIcons[index];
+          //var pauseIcon = listPauseIcons[index];
 
-          // Int parse is to check if same button is pressed again -> Stop the music
           if (
             item.classList.contains("d-none") &&
             parseInt(item.id.split("-")[1]) !== parseInt(icon.id.split("-")[1])
@@ -146,13 +159,19 @@
           }
         });
 
-        // Switch current on
+        // Switch clicked on
         clickedIconPlay.classList.toggle("d-none");
         clickedIconPause.classList.toggle("d-none");
 
+        songName = clickedIconPlay.parentElement.parentElement
+          .querySelector("div#songNameContainer")
+          .querySelector("p").textContent;
+
         // Current song id
         currentSongId = parseInt(clickedIconPlay.id.split("-")[1]);
-        getAudioSong(currentSongId);
+
+        getAudioSong(currentSongId, songName);
+
         // Toggle offcanvas on if not already
         getOffCanvas();
       }
@@ -167,18 +186,20 @@
         offcanvas.toggle();
       }
 
-      function getAudioSong(songId) {
+      function getAudioSong(songId, songName) {
         songContainer = document.getElementById("musicContainer");
+        songLabel = document.getElementById("offcanvasBottomLabel");
 
         const songCard = `
           <div id="musicContainer">
-            <audio controls autoplay style="width: 100%">
+            <audio controls autoplay style="width: 100%" id="audio">
               <source src="stream/${songId}" type="audio/mp3" />
             </audio>
           </div>
         `;
 
         songContainer.innerHTML = songCard;
+        songLabel.textContent = songName;
       }
     </script>
     {% endblock %} {% endif %}

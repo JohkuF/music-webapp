@@ -213,6 +213,7 @@ def allowed_file(filename):
     return True
 
 
+# TODO: add api admin command to turn of uploads
 @app.route("/upload/", methods=["GET", "POST"])
 @check_login
 def upload_file():
