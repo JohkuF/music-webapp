@@ -10,14 +10,31 @@ services:
     volumes:
       - pgdata2:/var/lib/postgres/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
-    environment:
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    #environment:
+    #  - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     networks:
-      - postgres_network
+      - app_network
+
+  flask:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    volumes:
+        - ./src:/app/src
+        - ./pyproject.toml:/app/pyproject.toml
+        - ./data:/data
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+    networks:
+      - app_network
 
 volumes:
   pgdata2:
 
 networks:
-  postgres_network:
+  app_network:
     driver: bridge

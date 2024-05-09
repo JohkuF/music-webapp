@@ -1,9 +1,20 @@
+-- Drop the existing app database if it exists
+--DROP DATABASE IF EXISTS app;
+
+-- Drop the existing roles if they exist
+--DROP ROLE IF EXISTS app_user;
+--DROP ROLE IF EXISTS postgres;
+
+
 CREATE ROLE postgres WITH SUPERUSER CREATEDB CREATEROLE LOGIN PASSWORD 'TEMPPASS';
 
-CREATE ROLE app_user WITH LOGIN PASSWORD 'TEMPPASS';
-GRANT ALL PRIVILEGES ON DATABASE app TO app_user;
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO app_user;
-GRANT ALL PRIVILEGES ON SEQUENCE users_id_seq, songs_id_seq, uploads_id_seq, messages_id_seq TO app_user;
+--CREATE ROLE app_user WITH LOGIN PASSWORD 'TEMPPASS';
+--GRANT ALL PRIVILEGES ON DATABASE app TO app_user;
+
+--CREATE DATABASE app;
+
+-- Connect to the app database
+\c musicApp;
 
 
 CREATE TABLE users (
@@ -56,3 +67,6 @@ CREATE TABLE uploads (
     filepath TEXT,
     filename TEXT
 );
+
+--GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO app_user;
+--GRANT ALL PRIVILEGES ON SEQUENCE users_id_seq, songs_id_seq, uploads_id_seq, messages_id_seq TO app_user;

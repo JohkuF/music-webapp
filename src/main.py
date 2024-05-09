@@ -1,4 +1,8 @@
+# TODO: Database add max char size
 import os
+import enum
+import copy
+import magic
 import bleach
 from flask import Flask, Response, stream_with_context
 from sqlalchemy import text
@@ -8,12 +12,19 @@ from werkzeug.utils import secure_filename
 from flask import render_template, request, session, redirect, flash, url_for, jsonify
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from utils import check_login
-from sql_commands import (
+
+from .utils import check_login
+from .sql_commands import (
     SQL_FILE_UPLOAD,
     SQL_SEND_MESSAGE_GENERAL,
     SQL_FETCH_MESSAGES_GENERAL,
 )
+
+
+class AcceptedFileTypes(enum.Enum):
+    MP3 = "audio/mpeg"
+    FLAC = "audio/flac"
+    OGG = "audio/ogg"
 
 
 app = Flask(__name__, template_folder="templates")
@@ -23,11 +34,12 @@ app = Flask(__name__, template_folder="templates")
 load_dotenv(".env")
 app.secret_key = os.getenv("SECRET_KEY")
 
-POSTGRES_USER_PASSWORD = os.getenv("POSTGRES_USER_PASSWORD")
+POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
 POSTGRES_USER = os.getenv("POSTGRES_USER")
 
+
 app.config["SQLALCHEMY_DATABASE_URI"] = (
-    f"postgresql://{POSTGRES_USER}:{POSTGRES_USER_PASSWORD}@localhost:8123/app"
+    f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@postgres:5432/musicApp"
 )
 
 app.config["UPLOAD_FOLDER"] = os.getenv("UPLOAD_FOLDER")
@@ -99,9 +111,9 @@ def send(song_id):
     assert song_id == request.view_args["song_id"]
     song_id = bleach.clean(song_id)
 
-    # print(request.form)
     content = request.form["content"]
     username = session["username"]
+
     if song_id == 0 or song_id == None:
         SQL_SEND_MESSAGE_GENERAL
         db.session.execute(
@@ -111,11 +123,8 @@ def send(song_id):
         db.session.commit()
         return redirect("/chat")
 
-    print("SONGPATH", song_id, content)
-
     sql = text(
-        """
-    INSERT INTO messages (song_id, user_id, upload_time, content)
+        """INSERT INTO messages (song_id, user_id, upload_time, content)
     SELECT :song_id, id, NOW(), :content FROM users WHERE username = :username;
     """
     )
@@ -135,15 +144,11 @@ def send(song_id):
 
     result = db.session.execute(sql, {"song_id": song_id})
     messages = result.fetchall()
-
     # TODO: compine /messages and this fuggly thing to one function
     response = ""
     for message in reversed(messages):
         content = bleach.clean(message.content)
         username = bleach.clean(message.username)
-
-        print(username, message.username, content, message.content, song_id)
-
         response += f"""
             <div class="card mb-4" id="messages-{song_id}">
               <div class="card-body">
@@ -156,9 +161,6 @@ def send(song_id):
               </div>
             </div>
         """
-
-    print(response)
-
     return response
 
 
@@ -206,11 +208,11 @@ def signup():
     return redirect("/")
 
 
-def allowed_file(filename):
-    # TODO: Add allowed file types.
-    # return '.' in filename and \
-    #       filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-    return True
+def allowed_file(filetype):
+    return filetype in [ftype.value for ftype in AcceptedFileTypes]
+    # mime = magic.Magic(mime=True)
+    # file_type = mime.from_buffer(filename.read())
+    # return file_type in [ftype.value for ftype in AcceptedFileTypes]
 
 
 # TODO: add api admin command to turn of uploads
@@ -226,18 +228,21 @@ def upload_file():
             return redirect(request.url)
 
         file = request.files["file"]
-        print(request.form)
+
         # TODO: use pydantic
         username = session["username"]
         song_name = request.form["songName"]
         song_description = request.form.get("description", None)
+
+        # TODO don't accept empty name
         if song_description == "":
             song_description = None
 
         if file.filename == "":
             flash("No selected file")
             return redirect(request.url)
-        if file and allowed_file(file.filename):
+
+        if file and allowed_file(file.content_type):
             filename = secure_filename(file.filename)
 
             db.session.execute(
@@ -253,8 +258,10 @@ def upload_file():
             db.session.commit()
 
             # TODO: check if file already exists.
-
-            file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
+            print("FILE:", file.content_length)
+            request.files["file"].save(
+                os.path.join(app.config["UPLOAD_FOLDER"], filename)
+            )
             # TODO: -maybe useless redirect - Anyway its wrong
             return redirect(url_for("upload_file", filename=filename))
 
