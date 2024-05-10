@@ -24,12 +24,29 @@ CREATE TABLE users (
     role TEXT
 );
 
+--CREATE TABLE users_metadata (
+--    id SERIAL PRIMARY KEY, 
+--    user_id INT REFERENCES users(id),
+--    songs_listened INT,
+--)
+
 CREATE TABLE songs (
     id SERIAL PRIMARY KEY,
     song_name TEXT,
     song_description TEXT
 );
 
+CREATE TABLE song_metadata (
+    id SERIAL PRIMARY KEY, 
+    song_id INT REFERENCES songs(id), 
+    playlists INT,
+    comments INT,
+    plays INT,
+    upvote INT,
+    downvote INT
+)
+
+-- TODO: Change (song_id) to (target_id) so more flexible commenting
 CREATE TABLE messages (
     id SERIAL PRIMARY KEY,
     song_id INT REFERENCES songs(id),

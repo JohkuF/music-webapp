@@ -4,6 +4,7 @@ import enum
 import copy
 import magic
 import bleach
+import logging
 from flask import Flask, Response, stream_with_context
 from sqlalchemy import text
 from dotenv import load_dotenv
@@ -13,7 +14,7 @@ from flask import render_template, request, session, redirect, flash, url_for, j
 from werkzeug.security import check_password_hash, generate_password_hash
 
 
-from .utils import check_login
+from .utils import check_login, find_new_filename
 from .sql_commands import (
     SQL_FILE_UPLOAD,
     SQL_SEND_MESSAGE_GENERAL,
@@ -145,6 +146,7 @@ def send(song_id):
     result = db.session.execute(sql, {"song_id": song_id})
     messages = result.fetchall()
     # TODO: compine /messages and this fuggly thing to one function
+    # Dynamic comment loading -> music doesn't stop
     response = ""
     for message in reversed(messages):
         content = bleach.clean(message.content)
@@ -244,6 +246,11 @@ def upload_file():
 
         if file and allowed_file(file.content_type):
             filename = secure_filename(file.filename)
+            path = app.config["UPLOAD_FOLDER"]
+
+            filepath = os.path.join(path, filename)
+            if os.path.exists(filepath):
+                filename = find_new_filename(path, filename)
 
             db.session.execute(
                 SQL_FILE_UPLOAD,
@@ -251,17 +258,14 @@ def upload_file():
                     "username": username,
                     "song_name": song_name,
                     "song_description": song_description,
-                    "filepath": app.config["UPLOAD_FOLDER"],
+                    "filepath": path,
                     "filename": filename,
                 },
             )
             db.session.commit()
 
             # TODO: check if file already exists.
-            print("FILE:", file.content_length)
-            request.files["file"].save(
-                os.path.join(app.config["UPLOAD_FOLDER"], filename)
-            )
+            request.files["file"].save(os.path.join(path, filename))
             # TODO: -maybe useless redirect - Anyway its wrong
             return redirect(url_for("upload_file", filename=filename))
 
