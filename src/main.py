@@ -19,6 +19,7 @@ from .sql_commands import (
     SQL_FILE_UPLOAD,
     SQL_SEND_MESSAGE_GENERAL,
     SQL_FETCH_MESSAGES_GENERAL,
+    SQL_FETCH_MESSAGES_ON_SONG,
 )
 
 
@@ -28,7 +29,7 @@ class AcceptedFileTypes(enum.Enum):
     OGG = "audio/ogg"
 
 
-app = Flask(__name__, template_folder="templates")
+app = Flask(__name__, template_folder="templates", static_folder="static")
 # TODO: check if compressions if good tradeoff
 # from flask_compress import Compress
 
@@ -37,11 +38,15 @@ app.secret_key = os.getenv("SECRET_KEY")
 
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
 POSTGRES_USER = os.getenv("POSTGRES_USER")
+IS_DOCKER = os.getenv("IS_DOCKER", False)
 
-
-app.config["SQLALCHEMY_DATABASE_URI"] = (
+postgres_uri = (
     f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@postgres:5432/musicApp"
+    if IS_DOCKER is not False
+    else f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@0.0.0.0:8123/musicApp"
 )
+
+app.config["SQLALCHEMY_DATABASE_URI"] = postgres_uri
 
 app.config["UPLOAD_FOLDER"] = os.getenv("UPLOAD_FOLDER")
 
@@ -59,35 +64,14 @@ def index():
 @app.route("/home")
 @check_login
 def home():
-    songs = get_songs()
-    print(songs)
+    songs = get_songs(17)
     return render_template("home.html", songs=songs)
-
-
-@app.route("/chat")
-def chat():
-    result = db.session.execute(SQL_FETCH_MESSAGES_GENERAL)
-    messages = result.fetchall()
-    print(messages)
-
-    return render_template("chat.html", messages=messages, count=len(messages))
 
 
 @app.route("/messages/<path:song_id>")
 def messages(song_id):
     assert song_id == request.view_args["song_id"]
-    print(request.path)
-    print("\n\n\nID", song_id)
-    sql = text(
-        """SELECT users.username, messages.content
-        FROM messages
-        JOIN users ON messages.user_id = users.id
-        WHERE messages.song_id = {};""".format(
-            song_id
-        )
-    )
-
-    result = db.session.execute(sql)
+    result = db.session.execute(SQL_FETCH_MESSAGES_ON_SONG, {"song_id": song_id})
     messages = result.fetchall()
     messages_list = [{"username": row[0], "content": row[1]} for row in messages]
 
@@ -95,10 +79,12 @@ def messages(song_id):
 
 
 @app.route("/songs")
-def get_songs():
+def get_songs(n: int | None = None):
     sql = text("SELECT * FROM songs;")
     result = db.session.execute(sql)
     songs = result.fetchall()
+    if n:
+        return songs[:n]
     return songs
 
 
@@ -135,15 +121,7 @@ def send(song_id):
     )
     db.session.commit()
 
-    # Experimental fetch for all the messages again
-    sql = text(
-        """SELECT users.username, messages.content
-        FROM messages
-        JOIN users ON messages.user_id = users.id
-        WHERE messages.song_id = :song_id;"""
-    )
-
-    result = db.session.execute(sql, {"song_id": song_id})
+    result = db.session.execute(SQL_FETCH_MESSAGES_ON_SONG, {"song_id": song_id})
     messages = result.fetchall()
     # TODO: compine /messages and this fuggly thing to one function
     # Dynamic comment loading -> music doesn't stop

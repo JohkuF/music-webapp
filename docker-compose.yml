@@ -10,8 +10,6 @@ services:
     volumes:
       - pgdata2:/var/lib/postgres/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
-    #environment:
-    #  - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     networks:
       - app_network
 
@@ -27,6 +25,8 @@ services:
         - ./data:/data
     env_file:
       - .env
+    environment:
+      - IS_DOCKER=true
     depends_on:
       - postgres
     networks:
