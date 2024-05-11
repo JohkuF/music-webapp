@@ -103,25 +103,19 @@ def send(song_id):
     content = request.form["content"]
     username = session["username"]
 
-    if song_id == 0 or song_id == None:
-        SQL_SEND_MESSAGE_GENERAL
-        db.session.execute(
-            SQL_SEND_MESSAGE_GENERAL,
-            {"username": session["username"], "content": content},
-        )
-        db.session.commit()
-        return redirect("/chat")
-
     sql = text(
         """INSERT INTO messages (song_id, user_id, upload_time, content)
     SELECT :song_id, id, NOW(), :content FROM users WHERE username = :username;
     """
     )
 
-    db.session.execute(
-        sql, {"username": username, "song_id": song_id, "content": content}
-    )
-    db.session.commit()
+    try:
+        db.session.execute(
+            sql, {"username": username, "song_id": song_id, "content": content}
+        )
+        db.session.commit()
+    except Exception as e:
+        logging.error(f"Error executing SQL: {e}")
 
     result = db.session.execute(SQL_FETCH_MESSAGES_ON_SONG, {"song_id": song_id})
     messages = result.fetchall()
@@ -143,6 +137,8 @@ def send(song_id):
               </div>
             </div>
         """
+    logging.warning(response)
+
     return response
 
 
@@ -171,6 +167,7 @@ def logout():
 
 @app.route("/signup", methods=["POST"])
 def signup():
+    # TODO Bleach username
     username = request.form["username"]
     # Check if username is taken
     sql = text("SELECT id, password FROM users WHERE username=:username")
