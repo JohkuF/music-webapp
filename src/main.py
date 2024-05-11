@@ -1,11 +1,9 @@
 # TODO: Database add max char size
 import os
 import enum
-import copy
-import magic
 import bleach
 import logging
-from flask import Flask, Response, stream_with_context
+from flask import Flask, Response, send_file
 from sqlalchemy import text
 from dotenv import load_dotenv
 from flask_sqlalchemy import SQLAlchemy
@@ -80,7 +78,11 @@ def messages(song_id):
 
 @app.route("/songs")
 def get_songs(n: int | None = None):
-    sql = text("SELECT * FROM songs;")
+    sql = text(
+        """SELECT * FROM songs
+           LEFT JOIN song_metadata
+           ON songs.id = song_metadata.song_id;"""
+    )
     result = db.session.execute(sql)
     songs = result.fetchall()
     if n:
@@ -269,6 +271,9 @@ def stream_music(music_id):
         # TODO propper error handling
         return "Naah"
 
+    return send_file(filepath + filename, mimetype="audio/mp3")
+    # TODO: Use this for radio feature
+    """
     # @stream_with_context
     def generate():
         count = 1
@@ -278,11 +283,21 @@ def stream_music(music_id):
             while data:
                 yield data
                 data = fwaw.read(1024 // 2)
-                count += 1
+
 
     response = Response(generate(), mimetype="audio/mp3")
     response.headers["X-Accel-Buffering"] = "no"
+    # response.headers["X-Accel-Buffering"] = "yes"
+    response.iter_chunk_size = 1024 // 2  # * 1024  # 1MB chunks
+
+    # Check if the client supports range requests
+    if "Range" in request.headers:
+        response.status_code = 206  # Partial Content
+    else:
+        response.status_code = 200  # OK
+
     return response
+    """
 
 
 if __name__ == "__main__":

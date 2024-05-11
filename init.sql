@@ -44,7 +44,7 @@ CREATE TABLE song_metadata (
     plays INT,
     upvote INT,
     downvote INT
-)
+);
 
 -- TODO: Change (song_id) to (target_id) so more flexible commenting
 CREATE TABLE messages (

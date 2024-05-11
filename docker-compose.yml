@@ -17,8 +17,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    ports:
-      - "5000:5000"
+    #ports:
+    #  - "5000:5000"
+    expose:
+      - 5000
     volumes:
         - ./src:/app/src
         - ./pyproject.toml:/app/pyproject.toml
@@ -32,8 +34,27 @@ services:
     networks:
       - app_network
 
+  caddy:
+    image: caddy:2.8-alpine
+    container_name: caddy
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - flask
+      - postgres
+    networks:
+      - app_network
+
 volumes:
   pgdata2:
+  caddy_data:
+  caddy_config:
 
 networks:
   app_network:
