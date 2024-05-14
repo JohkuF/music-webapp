@@ -6,22 +6,8 @@ function toggleIcons(icon) {
 
     // switch previous off
     const playIconsArray = Array.from(listPlayIcons); // Convert NodeList to array
-    var currentSong = -1;
-
-    // Get current playing song
-    /*
-    playIconsArray.forEach((item, index) => {
-      if (item.classList.contains("d-none")) {
-        currentSong =
-        item.parentElement.parentElement.parentElement.id.split("-")[1];
-        console.log("Current song", currentSong);
-      }
-    });
-    */
 
     playIconsArray.forEach((item, index) => {
-      //var pauseIcon = listPauseIcons[index];
-
       if (
         item.classList.contains("d-none") &&
         parseInt(item.id.split("-")[1]) !== parseInt(icon.id.split("-")[1])
@@ -44,7 +30,8 @@ function toggleIcons(icon) {
 
     getAudioSong(currentSongId, songName);
 
-    // Toggle offcanvas on if not already
+    // Toggle offcanvas on if not already 
+    // (The popup with the music player)
     getOffCanvas();
   }
 
