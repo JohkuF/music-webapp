@@ -37,14 +37,14 @@ CREATE TABLE songs (
 );
 
 CREATE TABLE song_metadata (
-    id SERIAL PRIMARY KEY, 
     song_id INT REFERENCES songs(id), 
     playlists INT,
     comments INT,
     plays INT,
     upvote INT,
-    downvote INT
-)
+    downvote INT,
+    PRIMARY KEY (song_id)
+);
 
 -- TODO: Change (song_id) to (target_id) so more flexible commenting
 CREATE TABLE messages (

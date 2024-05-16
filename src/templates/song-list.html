@@ -1,0 +1,127 @@
+{% for song in songs %}
+<a
+  class="list-group-item list-group-item-action list-group-item-NONE bg-gradient"
+  id="list-{{song.id}}-list"
+  data-bs-toggle="list"
+  href="#list-{{song.id}}"
+  role="tab"
+  aria-controls="list-{{song.id}}"
+>
+  <div class="row align-items-center">
+    <div class="col-2 col-sm-2">
+      <svg
+        id="play-{{song.id}}"
+        xmlns="http://www.w3.org/2000/svg"
+        width="16"
+        height="16"
+        fill="currentColor"
+        class="bi bi-play-circle icon-play"
+        viewBox="0 0 16 16"
+        onclick="toggleIcons(this)"
+      >
+        <path
+          d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"
+        />
+        <path
+          d="M6.271 5.055a.5.5 0 0 1 .52.038l3.5 2.5a.5.5 0 0 1 0 .814l-3.5 2.5A.5.5 0 0 1 6 10.5v-5a.5.5 0 0 1 .271-.445"
+        />
+      </svg>
+      <svg
+        id="pause-{{song.id}}"
+        xmlns="http://www.w3.org/2000/svg"
+        width="16"
+        height="16"
+        fill="currentColor"
+        class="bi bi-pause-circle icon-pause d-none"
+        viewBox="0 0 16 16"
+        onclick="toggleIcons(this)"
+      >
+        <path
+          d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"
+        />
+        <path
+          d="M5 6.25a1.25 1.25 0 1 1 2.5 0v3.5a1.25 1.25 0 1 1-2.5 0zm3.5 0a1.25 1.25 0 1 1 2.5 0v3.5a1.25 1.25 0 1 1-2.5 0z"
+        />
+      </svg>
+    </div>
+    <div class="col-5 col-sm-6" id="songNameContainer">
+      <p class="m-0" id="songName">{{ song.song_name }}</p>
+    </div>
+    <div class="col-5 col-sm-4 row align-items-center">
+      <div class="col p-0">
+        <div class="row">
+          <svg
+            id="upvote-off-{{song.id}}"
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            fill="currentColor"
+            class="bi bi-arrow-up-circle"
+            viewBox="0 0 16 16"
+            onclick="toggleVote(this)"
+          >
+            <path
+              fill-rule="evenodd"
+              d="M1 8a7 7 0 1 0 14 0A7 7 0 0 0 1 8m15 0A8 8 0 1 1 0 8a8 8 0 0 1 16 0m-7.5 3.5a.5.5 0 0 1-1 0V5.707L5.354 7.854a.5.5 0 1 1-.708-.708l3-3a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 5.707z"
+            />
+          </svg>
+          <svg
+            id="upvote-on-{{song.id}}"
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            fill="green"
+            class="bi bi-arrow-up-circle-fill d-none"
+            viewBox="0 0 16 16"
+            onclick="toggleVote(this)"
+          >
+            <path
+              d="M16 8A8 8 0 1 0 0 8a8 8 0 0 0 16 0m-7.5 3.5a.5.5 0 0 1-1 0V5.707L5.354 7.854a.5.5 0 1 1-.708-.708l3-3a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 5.707z"
+            />
+          </svg>
+        </div>
+      </div>
+      <div class="col p-0" style="text-align: center">
+        <p class="m-0">{{ song.upvote + song.downvote }}</p>
+      </div>
+      <div class="col p-0">
+        <div class="row">
+          <svg
+            id="downvote-off-{{song.id}}"
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            fill="currentColor"
+            class="bi bi-arrow-down-circle"
+            viewBox="0 0 16 16"
+            onclick="toggleVote(this)"
+          >
+            <path
+              fill-rule="evenodd"
+              d="M1 8a7 7 0 1 0 14 0A7 7 0 0 0 1 8m15 0A8 8 0 1 1 0 8a8 8 0 0 1 16 0M8.5 4.5a.5.5 0 0 0-1 0v5.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293z"
+            />
+          </svg>
+
+          <svg
+            id="downvote-on-{{song.id}}"
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            fill="red"
+            class="bi bi-arrow-down-circle-fill d-none"
+            viewBox="0 0 16 16"
+            onclick="toggleVote(this)"
+          >
+            <path
+              d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0M8.5 4.5a.5.5 0 0 0-1 0v5.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293z"
+            />
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+</a>
+
+<script src="{{ url_for('static', filename='audio.js') }}"></script>
+<script src="{{ url_for('static', filename='vote.js') }}"></script>
+{% endfor %}

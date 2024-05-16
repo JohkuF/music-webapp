@@ -1,11 +1,9 @@
 # TODO: Database add max char size
 import os
 import enum
-import copy
-import magic
 import bleach
 import logging
-from flask import Flask, Response, stream_with_context
+from flask import Flask, Response, send_file
 from sqlalchemy import text
 from dotenv import load_dotenv
 from flask_sqlalchemy import SQLAlchemy
@@ -19,6 +17,7 @@ from .sql_commands import (
     SQL_FILE_UPLOAD,
     SQL_SEND_MESSAGE_GENERAL,
     SQL_FETCH_MESSAGES_GENERAL,
+    SQL_FETCH_MESSAGES_ON_SONG,
 )
 
 
@@ -28,7 +27,7 @@ class AcceptedFileTypes(enum.Enum):
     OGG = "audio/ogg"
 
 
-app = Flask(__name__, template_folder="templates")
+app = Flask(__name__, template_folder="templates", static_folder="static")
 # TODO: check if compressions if good tradeoff
 # from flask_compress import Compress
 
@@ -37,11 +36,15 @@ app.secret_key = os.getenv("SECRET_KEY")
 
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
 POSTGRES_USER = os.getenv("POSTGRES_USER")
+IS_DOCKER = os.getenv("IS_DOCKER", False)
 
-
-app.config["SQLALCHEMY_DATABASE_URI"] = (
+postgres_uri = (
     f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@postgres:5432/musicApp"
+    if IS_DOCKER is not False
+    else f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@0.0.0.0:8123/musicApp"
 )
+
+app.config["SQLALCHEMY_DATABASE_URI"] = postgres_uri
 
 app.config["UPLOAD_FOLDER"] = os.getenv("UPLOAD_FOLDER")
 
@@ -59,35 +62,14 @@ def index():
 @app.route("/home")
 @check_login
 def home():
-    songs = get_songs()
-    print(songs)
+    songs = get_songs(17)
     return render_template("home.html", songs=songs)
-
-
-@app.route("/chat")
-def chat():
-    result = db.session.execute(SQL_FETCH_MESSAGES_GENERAL)
-    messages = result.fetchall()
-    print(messages)
-
-    return render_template("chat.html", messages=messages, count=len(messages))
 
 
 @app.route("/messages/<path:song_id>")
 def messages(song_id):
     assert song_id == request.view_args["song_id"]
-    print(request.path)
-    print("\n\n\nID", song_id)
-    sql = text(
-        """SELECT users.username, messages.content
-        FROM messages
-        JOIN users ON messages.user_id = users.id
-        WHERE messages.song_id = {};""".format(
-            song_id
-        )
-    )
-
-    result = db.session.execute(sql)
+    result = db.session.execute(SQL_FETCH_MESSAGES_ON_SONG, {"song_id": song_id})
     messages = result.fetchall()
     messages_list = [{"username": row[0], "content": row[1]} for row in messages]
 
@@ -95,10 +77,16 @@ def messages(song_id):
 
 
 @app.route("/songs")
-def get_songs():
-    sql = text("SELECT * FROM songs;")
+def get_songs(n: int | None = None):
+    sql = text(
+        """SELECT * FROM songs
+           LEFT JOIN song_metadata
+           ON songs.id = song_metadata.song_id;"""
+    )
     result = db.session.execute(sql)
     songs = result.fetchall()
+    if n:
+        return songs[:n]
     return songs
 
 
@@ -115,35 +103,21 @@ def send(song_id):
     content = request.form["content"]
     username = session["username"]
 
-    if song_id == 0 or song_id == None:
-        SQL_SEND_MESSAGE_GENERAL
-        db.session.execute(
-            SQL_SEND_MESSAGE_GENERAL,
-            {"username": session["username"], "content": content},
-        )
-        db.session.commit()
-        return redirect("/chat")
-
     sql = text(
         """INSERT INTO messages (song_id, user_id, upload_time, content)
     SELECT :song_id, id, NOW(), :content FROM users WHERE username = :username;
     """
     )
 
-    db.session.execute(
-        sql, {"username": username, "song_id": song_id, "content": content}
-    )
-    db.session.commit()
+    try:
+        db.session.execute(
+            sql, {"username": username, "song_id": song_id, "content": content}
+        )
+        db.session.commit()
+    except Exception as e:
+        logging.error(f"Error executing SQL: {e}")
 
-    # Experimental fetch for all the messages again
-    sql = text(
-        """SELECT users.username, messages.content
-        FROM messages
-        JOIN users ON messages.user_id = users.id
-        WHERE messages.song_id = :song_id;"""
-    )
-
-    result = db.session.execute(sql, {"song_id": song_id})
+    result = db.session.execute(SQL_FETCH_MESSAGES_ON_SONG, {"song_id": song_id})
     messages = result.fetchall()
     # TODO: compine /messages and this fuggly thing to one function
     # Dynamic comment loading -> music doesn't stop
@@ -163,6 +137,8 @@ def send(song_id):
               </div>
             </div>
         """
+    logging.warning(response)
+
     return response
 
 
@@ -191,6 +167,7 @@ def logout():
 
 @app.route("/signup", methods=["POST"])
 def signup():
+    # TODO Bleach username
     username = request.form["username"]
     # Check if username is taken
     sql = text("SELECT id, password FROM users WHERE username=:username")
@@ -291,6 +268,9 @@ def stream_music(music_id):
         # TODO propper error handling
         return "Naah"
 
+    return send_file(filepath + filename, mimetype="audio/mp3")
+    # TODO: Use this for radio feature
+    """
     # @stream_with_context
     def generate():
         count = 1
@@ -300,11 +280,21 @@ def stream_music(music_id):
             while data:
                 yield data
                 data = fwaw.read(1024 // 2)
-                count += 1
+
 
     response = Response(generate(), mimetype="audio/mp3")
     response.headers["X-Accel-Buffering"] = "no"
+    # response.headers["X-Accel-Buffering"] = "yes"
+    response.iter_chunk_size = 1024 // 2  # * 1024  # 1MB chunks
+
+    # Check if the client supports range requests
+    if "Range" in request.headers:
+        response.status_code = 206  # Partial Content
+    else:
+        response.status_code = 200  # OK
+
     return response
+    """
 
 
 if __name__ == "__main__":

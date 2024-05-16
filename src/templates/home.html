@@ -3,7 +3,6 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Your Title Here</title>
     <link
       rel="stylesheet"
       type="text/css"
@@ -17,59 +16,8 @@
       <p>Browse some music.</p>
       <div class="row flex-column flex-md-row">
         <div class="col-md-4">
-          <div class="list-group container" id="list-tab" role="tablist">
-            {% for song in songs %}
-            <a
-              class="list-group-item list-group-item-action list-group-item-NONE bg-gradient"
-              id="list-{{song.id}}-list"
-              data-bs-toggle="list"
-              href="#list-{{song.id}}"
-              role="tab"
-              aria-controls="list-{{song.id}}"
-            >
-              <div class="row d-flex align-items-center">
-                <div class="col-md">
-                  <svg
-                    id="play-{{song.id}}"
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    fill="currentColor"
-                    class="bi bi-play-circle icon-play"
-                    viewBox="0 0 16 16"
-                    onclick="toggleIcons(this)"
-                  >
-                    <path
-                      d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"
-                    />
-                    <path
-                      d="M6.271 5.055a.5.5 0 0 1 .52.038l3.5 2.5a.5.5 0 0 1 0 .814l-3.5 2.5A.5.5 0 0 1 6 10.5v-5a.5.5 0 0 1 .271-.445"
-                    />
-                  </svg>
-                  <svg
-                    id="pause-{{song.id}}"
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    fill="currentColor"
-                    class="bi bi-pause-circle icon-pause d-none"
-                    viewBox="0 0 16 16"
-                    onclick="toggleIcons(this)"
-                  >
-                    <path
-                      d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"
-                    />
-                    <path
-                      d="M5 6.25a1.25 1.25 0 1 1 2.5 0v3.5a1.25 1.25 0 1 1-2.5 0zm3.5 0a1.25 1.25 0 1 1 2.5 0v3.5a1.25 1.25 0 1 1-2.5 0z"
-                    />
-                  </svg>
-                </div>
-                <div class="col-sm-8" id="songNameContainer">
-                  <p class="m-0" id="songName">{{ song.song_name }}</p>
-                </div>
-              </div>
-            </a>
-            {% endfor %}
+          <div class="list-group" id="list-tab" role="tablist">
+            {% include "song-list.html" %}
           </div>
         </div>
         <div class="col-md-8">
@@ -81,12 +29,18 @@
               role="tabpanel"
               aria-labelledby="list-{{song.id}}-list"
             >
-              {% set song_id = song.id %} {{ song.song_description }} {% include
-              "chat-component2.html" %}
+              {% set song_id = song.id %} {{ song.song_description }}
+              <div
+                class="overflow-auto"
+                style="max-height: calc(100vh - 300px); overflow: auto"
+              >
+                {% include "chat-component2.html" %}
+              </div>
             </div>
             {% endfor %}
           </div>
         </div>
+        <!-- The popup player -->
         <div
           class="offcanvas offcanvas-bottom container text-center"
           style="height: auto"
@@ -121,87 +75,6 @@
         </div>
       </div>
     </div>
-
-    <script>
-      // TODO: Add play when pressing Enter-key
-      // TODO: FIX ANIMATIONS - STOP/PLAY FROM TOGGLE
-
-      function toggleIcons(icon) {
-        const listPlayIcons = document.querySelectorAll(".icon-play");
-        const listPauseIcons = document.querySelectorAll(".icon-pause");
-        var clickedIconPlay = icon.parentElement.querySelector(".icon-play");
-        var clickedIconPause = icon.parentElement.querySelector(".icon-pause");
-
-        // switch previous off
-        const playIconsArray = Array.from(listPlayIcons); // Convert NodeList to array
-        var currentSong = -1;
-
-        // Get current playing song
-        /*
-        playIconsArray.forEach((item, index) => {
-          if (item.classList.contains("d-none")) {
-            currentSong =
-            item.parentElement.parentElement.parentElement.id.split("-")[1];
-            console.log("Current song", currentSong);
-          }
-        });
-        */
-
-        playIconsArray.forEach((item, index) => {
-          //var pauseIcon = listPauseIcons[index];
-
-          if (
-            item.classList.contains("d-none") &&
-            parseInt(item.id.split("-")[1]) !== parseInt(icon.id.split("-")[1])
-          ) {
-            item.classList.toggle("d-none");
-            listPauseIcons[index].classList.toggle("d-none");
-          }
-        });
-
-        // Switch clicked on
-        clickedIconPlay.classList.toggle("d-none");
-        clickedIconPause.classList.toggle("d-none");
-
-        songName = clickedIconPlay.parentElement.parentElement
-          .querySelector("div#songNameContainer")
-          .querySelector("p").textContent;
-
-        // Current song id
-        currentSongId = parseInt(clickedIconPlay.id.split("-")[1]);
-
-        getAudioSong(currentSongId, songName);
-
-        // Toggle offcanvas on if not already
-        getOffCanvas();
-      }
-
-      function getOffCanvas() {
-        // Get reference to the offcanvas
-        const offcanvas = new bootstrap.Offcanvas(
-          document.getElementById("offcanvasScrolling")
-        );
-
-        // Toggle the offcanvas
-        offcanvas.toggle();
-      }
-
-      function getAudioSong(songId, songName) {
-        songContainer = document.getElementById("musicContainer");
-        songLabel = document.getElementById("offcanvasBottomLabel");
-
-        const songCard = `
-          <div id="musicContainer">
-            <audio controls autoplay style="width: 100%" id="audio">
-              <source src="stream/${songId}" type="audio/mp3" />
-            </audio>
-          </div>
-        `;
-
-        songContainer.innerHTML = songCard;
-        songLabel.textContent = songName;
-      }
-    </script>
     {% endblock %} {% endif %}
   </body>
 </html>
