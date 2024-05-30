@@ -1,4 +1,12 @@
 [[package]]
+name = "annotated-types"
+version = "0.7.0"
+description = "Reusable constraint types to use with typing.Annotated"
+category = "main"
+optional = false
+python-versions = ">=3.8"
+
+[[package]]
 name = "bleach"
 version = "6.1.0"
 description = "An easy safelist-based HTML-sanitizing tool."
@@ -136,6 +144,33 @@ optional = false
 python-versions = ">=3.7"
 
 [[package]]
+name = "pydantic"
+version = "2.7.2"
+description = "Data validation using Python type hints"
+category = "main"
+optional = false
+python-versions = ">=3.8"
+
+[package.dependencies]
+annotated-types = ">=0.4.0"
+pydantic-core = "2.18.3"
+typing-extensions = ">=4.6.1"
+
+[package.extras]
+email = ["email-validator (>=2.0.0)"]
+
+[[package]]
+name = "pydantic-core"
+version = "2.18.3"
+description = "Core functionality for Pydantic validation and serialization"
+category = "main"
+optional = false
+python-versions = ">=3.8"
+
+[package.dependencies]
+typing-extensions = ">=4.6.0,<4.7.0 || >4.7.0"
+
+[[package]]
 name = "python-dotenv"
 version = "1.0.1"
 description = "Read key-value pairs from a .env file and set them as environment variables"
@@ -232,9 +267,10 @@ watchdog = ["watchdog (>=2.3)"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "db3c366448e3c1acf12ad14656d376de5c9965451bbc2ca805f3c73fa27ad3b0"
+content-hash = "bb5f8f831ee0559aeae5ec1015b54c771b1c200a7c36943ae3c0d2ac5fd579cc"
 
 [metadata.files]
+annotated-types = []
 bleach = []
 blinker = []
 click = []
@@ -247,6 +283,8 @@ itsdangerous = []
 jinja2 = []
 markupsafe = []
 psycopg2 = []
+pydantic = []
+pydantic-core = []
 python-dotenv = []
 python-magic = []
 six = []

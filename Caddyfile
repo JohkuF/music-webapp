@@ -5,3 +5,19 @@
 10.112.21.247:80 {
     reverse_proxy flask:5000
 }
+
+10.46.12.107:80 {
+	reverse_proxy flask:5000
+}
+
+192.168.1.106:80 {
+    reverse_proxy flask:5000
+}
+
+10.1.67.76:80 {
+    reverse_proxy flask:5000
+}
+
+10.1.67.73:80 {
+    reverse_proxy flask:5000
+}

@@ -82,3 +82,29 @@ SQL_FETCH_MESSAGES_ON_SONG = text(
        JOIN users ON messages.user_id = users.id
        WHERE messages.song_id = :song_id;"""
 )
+
+SQL_UPDATE_SONG_UPVOTE = text(
+    """UPDATE song_metadata 
+        SET upvote = upvote + 1
+        WHERE song_id = :song_id;
+    """
+)
+
+SQL_INSERT_VOTE = text(
+    """
+WITH user_data AS (
+    SELECT id FROM users WHERE username = :username
+)
+INSERT INTO likes (
+    user_id,
+    target_id,
+    target_type,
+    vote_type
+)
+SELECT
+    (SELECT id FROM user_data),
+    :target_id,
+    :target_type,
+    :vote_tfield, field2ype;
+    """
+)

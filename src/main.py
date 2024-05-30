@@ -2,30 +2,27 @@
 import os
 import enum
 import bleach
+import json
 import logging
-from flask import Flask, Response, send_file
 from sqlalchemy import text
 from dotenv import load_dotenv
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.dialects import postgresql
 from werkzeug.utils import secure_filename
+from flask import Flask, Response, send_file
 from flask import render_template, request, session, redirect, flash, url_for, jsonify
 from werkzeug.security import check_password_hash, generate_password_hash
 
-
+from .schemas import VoteSchema
+from .myenums import VoteType, ChangeType, AcceptedFileTypes
 from .utils import check_login, find_new_filename
 from .sql_commands import (
     SQL_FILE_UPLOAD,
     SQL_SEND_MESSAGE_GENERAL,
     SQL_FETCH_MESSAGES_GENERAL,
     SQL_FETCH_MESSAGES_ON_SONG,
+    SQL_INSERT_VOTE,
 )
-
-
-class AcceptedFileTypes(enum.Enum):
-    MP3 = "audio/mpeg"
-    FLAC = "audio/flac"
-    OGG = "audio/ogg"
-
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 # TODO: check if compressions if good tradeoff
@@ -83,6 +80,15 @@ def get_songs(n: int | None = None):
            LEFT JOIN song_metadata
            ON songs.id = song_metadata.song_id;"""
     )
+
+    sql = text(
+        """SELECT * 
+    FROM songs
+    LEFT JOIN song_metadata
+    ON songs.id = song_metadata.song_id
+    ORDER BY (song_metadata.upvote - song_metadata.downvote) DESC;"""
+    )
+
     result = db.session.execute(sql)
     songs = result.fetchall()
     if n:
@@ -174,7 +180,7 @@ def signup():
     result = db.session.execute(sql, {"username": username})
     user = result.fetchone()
     if user:
-        return "User already exists"
+        return "User alre    print(d)ady exists"
 
     hash_pass = generate_password_hash(request.form["password"])
 
@@ -185,6 +191,96 @@ def signup():
     db.session.commit()
 
     return redirect("/")
+
+#@app.route("/q", methods=["POST"])
+#@check_login
+#def query_info():
+#    
+#    return json.dumps({"success": True}), 200, {"ContentType": "application/json"}
+
+
+@app.route("/v", methods=["POST"])
+@check_login
+def register_vote():
+    d = json.loads(request.data)
+    # Validate the model
+    validatedModel = VoteSchema(**d)
+
+    # Check if request is for voting
+    if validatedModel.type in VoteType:
+        return process_voting(validatedModel)
+
+    return json.dumps({"success": True}), 200, {"ContentType": "application/json"}
+
+
+def process_voting(voteModel: VoteSchema) -> str:
+    """process voting (upvote/downvote)"""
+
+    # Check if user has already voted similarly
+    sql = text(
+        """SELECT 1 FROM likes
+        JOIN users ON likes.user_id = users.id
+        WHERE users.username = :username
+        AND target_id = :song_id
+        AND target_type = 'vote'
+        AND vote_type != :votetype"""
+    )
+    res = db.session.execute(
+        sql,
+        {
+            "username": session["username"],
+            "song_id": voteModel.id,
+            "votetype": voteModel.type.value,
+        },
+    ).fetchone()
+
+    if not res:
+        # The operation is already on database
+        # TODO: Do logging
+        print("value already in db")
+        return (
+            json.dumps({"Unprocessable content": "Already voted similarly"}),
+            422,
+            {"ContentType": "application/json"},
+        )
+
+    # Update the values
+    sql = text(
+        """UPDATE song_metadata 
+        SET {votetype} = {votetype} + 1
+        WHERE song_id = :song_id;
+
+        -- Update likes if the user has already voted on the target
+        UPDATE likes 
+        SET target_type = 'vote', vote_type = :votetype
+        WHERE user_id = (SELECT id FROM users WHERE username = :username) AND target_id = :song_id;
+
+        -- Insert a new like if the user hasn't voted on the target
+        INSERT INTO likes (user_id, target_id, target_type, vote_type)
+        SELECT u.id, :song_id, 'vote', :votetype
+        FROM users u
+        WHERE u.username = :username
+        AND NOT EXISTS (
+            SELECT 1 FROM likes 
+            WHERE user_id = u.id AND target_id = :song_id
+        );
+        """.format(
+            votetype=voteModel.type.value
+        )
+    )
+
+    params = {
+        "song_id": voteModel.id,
+        "username": session["username"],
+        "votetype": (
+            voteModel.type.value if voteModel.change == ChangeType.ON else "none"
+        ),
+    }
+
+    db.session.execute(sql, params)
+    db.session.commit()
+
+    return json.dumps({"success": True}), 200, {"ContentType": "application/json"}
 
 
 def allowed_file(filetype):
