@@ -1,3 +1,8 @@
+window.onload = function () {
+  // Fetch persons votes
+  
+};
+
 function toggleVote(icon) {
   var change = toggle(icon);
 
@@ -15,6 +20,11 @@ function toggleVote(icon) {
       toggle(otherVoteON);
     }
   }
+
+  // Send info to server
+  var change = toggle(icon);
+  var [type, _, id] = icon.id.split("-");
+  sendPostRequestFetch("/v", parseInt(id), type, change);
 }
 
 function toggle(icon) {
@@ -32,7 +42,6 @@ function toggle(icon) {
   var other = icon.parentElement.querySelector("#" + otherId);
 
   var clickedClass = icon.getAttribute("class");
-  //var otherClass = other.getAttribute("class");
 
   clickedClass += " d-none";
   other.classList.remove("d-none");
@@ -45,10 +54,10 @@ function toggle(icon) {
 
 function checkOthervote(icon) {
   /*
-    Check if other vote is on or off
-    on -> True
-    off -> False
-    */
+  Check if other vote is on or off
+  on -> True
+  off -> False
+  */
 
   var otherVote = getOtherVoteON(icon);
 
@@ -76,7 +85,7 @@ function getOtherVoteON(icon) {
 
 function getOtherVoteOFF(icon) {
   /*
-    The other vote (upvote, downvote) ON-version
+  The other vote (upvote, downvote) ON-version
   */
   var otherVoteId = getOtherVoteId(icon);
   otherVoteId = otherVoteId.replace("on", "off");
@@ -95,4 +104,27 @@ function getOtherVoteId(icon) {
   }
 
   return otherVoteId;
+}
+
+function sendPostRequestFetch(url, id, type, change) {
+  const data = {
+    id: id,
+    type: type,
+    change: change,
+  };
+
+  fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  })
+    .then((response) => response.json())
+    .then((data) => {
+      console.log("Success:", data);
+    })
+    .catch((error) => {
+      console.error("Error:", error);
+    });
 }
