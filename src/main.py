@@ -192,10 +192,11 @@ def signup():
 
     return redirect("/")
 
-#@app.route("/q", methods=["POST"])
-#@check_login
-#def query_info():
-#    
+
+# @app.route("/q", methods=["POST"])
+# @check_login
+# def query_info():
+#
 #    return json.dumps({"success": True}), 200, {"ContentType": "application/json"}
 
 
@@ -218,12 +219,12 @@ def process_voting(voteModel: VoteSchema) -> str:
 
     # Check if user has already voted similarly
     sql = text(
-        """SELECT 1 FROM likes
+        """SELECT vote_type FROM likes
         JOIN users ON likes.user_id = users.id
         WHERE users.username = :username
         AND target_id = :song_id
         AND target_type = 'vote'
-        AND vote_type != :votetype"""
+        AND vote_type = :votetype"""
     )
     res = db.session.execute(
         sql,
@@ -234,7 +235,7 @@ def process_voting(voteModel: VoteSchema) -> str:
         },
     ).fetchone()
 
-    if not res:
+    if res and voteModel.change == ChangeType.ON:
         # The operation is already on database
         # TODO: Do logging
         print("value already in db")
@@ -247,7 +248,7 @@ def process_voting(voteModel: VoteSchema) -> str:
     # Update the values
     sql = text(
         """UPDATE song_metadata 
-        SET {votetype} = {votetype} + 1
+        SET {votetype} = {votetype} + {add_vote}
         WHERE song_id = :song_id;
 
         -- Update likes if the user has already voted on the target
@@ -265,7 +266,8 @@ def process_voting(voteModel: VoteSchema) -> str:
             WHERE user_id = u.id AND target_id = :song_id
         );
         """.format(
-            votetype=voteModel.type.value
+            votetype=voteModel.type.value,
+            add_vote=1 if voteModel.change == ChangeType.ON else -1,
         )
     )
 
