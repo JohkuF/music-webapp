@@ -85,5 +85,12 @@ CREATE TABLE uploads (
     filename TEXT
 );
 
+CREATE TABLE signup_state (
+    id SERIAL PRIMARY KEY,
+    allow_signup BOOLEAN
+);
+
+INSERT INTO signup_state (allow_signup) VALUES (true);
+
 --GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO app_user;
 --GRANT ALL PRIVILEGES ON SEQUENCE users_id_seq, songs_id_seq, uploads_id_seq, messages_id_seq TO app_user;

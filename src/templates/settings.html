@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="fi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="{{ url_for('static', filename='styles.css') }}"
+    />
+  </head>
+  <body style="background: white">
+    {% if session.username %} {% extends 'base.html' %} {% block content %}
+    <div class="container-lg">
+      <h1>Settings</h1>
+      {% if is_admin %}
+
+      <form action="/a" method="post">
+        <button type="submit" name="down" class="button btn btn-danger">
+          Shutdown signup
+        </button>
+        <button type="submit" name="up" class="button btn btn-warning">
+          Open signup
+        </button>
+      </form>
+
+      {% endif %}
+      <div class="row flex-column flex-md-row">
+        <div class="col-md-4">
+          <div class="list-group" id="list-tab" role="tablist">
+            {% include "song-list.html" %}
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endblock %} {% endif %}
+  </body>
+</html>

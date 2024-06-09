@@ -15,7 +15,13 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from .schemas import VoteSchema
 from .myenums import VoteType, ChangeType, AcceptedFileTypes
-from .utils import check_login, find_new_filename
+from .utils import (
+    check_login,
+    find_new_filename,
+    is_admin,
+    set_signup_state,
+    get_signup_state,
+)
 from .sql_commands import (
     SQL_FILE_UPLOAD,
     SQL_SEND_MESSAGE_GENERAL,
@@ -31,6 +37,7 @@ app = Flask(__name__, template_folder="templates", static_folder="static")
 load_dotenv(".env")
 app.secret_key = os.getenv("SECRET_KEY")
 
+
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
 POSTGRES_USER = os.getenv("POSTGRES_USER")
 IS_DOCKER = os.getenv("IS_DOCKER", False)
@@ -45,6 +52,7 @@ app.config["SQLALCHEMY_DATABASE_URI"] = postgres_uri
 
 app.config["UPLOAD_FOLDER"] = os.getenv("UPLOAD_FOLDER")
 
+app.config["allow_signup"] = True
 
 db = SQLAlchemy(app)
 
@@ -59,6 +67,7 @@ def index():
 @app.route("/home")
 @check_login
 def home():
+    print("STATE", get_signup_state(db))
     songs = get_songs(17)
     return render_template("home.html", songs=songs)
 
@@ -75,6 +84,27 @@ def explore():
 def library():
     songs = get_songs(user_id=session["user_id"])
     return render_template("library.html", songs=songs)
+
+
+@app.route("/settings")
+@check_login
+def settings():
+    return render_template("settings.html", is_admin=is_admin(db, session["user_id"]))
+
+
+@app.route("/a", methods=["POST"])
+@check_login
+def admin_commands():
+    if is_admin(db, session["user_id"]):
+        if "down" in request.form:
+            print("TO FALSE")
+            set_signup_state(db, False)
+        elif "up" in request.form:
+            set_signup_state(db, True)
+
+        return redirect("/settings")
+
+    return json.dumps({"UNAUTHORIZED": True}), 401, {"ContentType": "application/json"}
 
 
 @app.route("/messages/<path:song_id>")
@@ -164,6 +194,7 @@ def send(song_id):
 
 @app.route("/login", methods=["POST"])
 def login():
+
     username = request.form["username"]
     password = request.form["password"]
 
@@ -190,6 +221,10 @@ def logout():
 
 @app.route("/signup", methods=["POST"])
 def signup():
+    # Check if signup is currently closed
+    if not get_signup_state(db):
+        return "Signup closed by admin"
+
     # TODO Bleach username
     username = request.form["username"]
     # Check if username is taken
