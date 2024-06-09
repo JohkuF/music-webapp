@@ -12,8 +12,8 @@
   <body style="background: white">
     {% if session.username %} {% extends 'base.html' %} {% block content %}
     <div class="container-lg">
-      <h1>Welcome to the Home Page</h1>
-      <p>Browse some music.</p>
+      <h1>Welcome to the Explore Page</h1>
+      <p>Here is all the music uploaded.</p>
       <div class="row flex-column flex-md-row">
         <div class="col-md-4">
           <div class="list-group" id="list-tab" role="tablist">
@@ -41,7 +41,7 @@
           </div>
         </div>
       </div>
-      {% include "popup-player-component.html" %}
+      {% include 'popup-player-component.html' %}
     </div>
     {% endblock %} {% endif %}
   </body>
