@@ -202,10 +202,11 @@ def login():
     result = db.session.execute(sql, {"username": username})
     user = result.fetchone()
 
-    # Add user_id to jwt token
-    session["user_id"] = user[0]
     if not user:
         return "User not found"
+
+    # Add user_id to jwt token
+    session["user_id"] = user[0]
 
     if check_password_hash(user[1], password):
         session["username"] = username
