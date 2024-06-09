@@ -63,6 +63,20 @@ def home():
     return render_template("home.html", songs=songs)
 
 
+@app.route("/explore")
+@check_login
+def explore():
+    songs = get_songs()
+    return render_template("explore.html", songs=songs)
+
+
+@app.route("/library")
+@check_login
+def library():
+    songs = get_songs(user_id=session["user_id"])
+    return render_template("library.html", songs=songs)
+
+
 @app.route("/messages/<path:song_id>")
 def messages(song_id):
     assert song_id == request.view_args["song_id"]
@@ -74,25 +88,25 @@ def messages(song_id):
 
 
 @app.route("/songs")
-def get_songs(n: int | None = None):
-    sql = text(
-        """SELECT * FROM songs
-           LEFT JOIN song_metadata
-           ON songs.id = song_metadata.song_id;"""
-    )
+def get_songs(n: int | None = None, user_id: int | None = None):
+    print("Songs for", user_id)
 
-    sql = text(
-        """SELECT * 
-    FROM songs
-    LEFT JOIN song_metadata
-    ON songs.id = song_metadata.song_id
-    ORDER BY (song_metadata.upvote - song_metadata.downvote) DESC;"""
-    )
+    sql = """SELECT songs.*, song_metadata.*
+        FROM songs
+        LEFT JOIN song_metadata ON songs.id = song_metadata.song_id
+        LEFT JOIN uploads u ON u.song_id = songs.id
+        WHERE (:user_id IS NULL OR u.user_id = :user_id)
+        ORDER BY (song_metadata.upvote - song_metadata.downvote) DESC
+    """
 
-    result = db.session.execute(sql)
-    songs = result.fetchall()
+    params = {"user_id": user_id}
     if n:
-        return songs[:n]
+        sql += "\nLIMIT :limit"
+        params["limit"] = n
+
+    result = db.session.execute(text(sql), params)
+    songs = result.fetchall()
+
     return songs
 
 
@@ -156,6 +170,9 @@ def login():
     sql = text("SELECT id, password FROM users WHERE username=:username")
     result = db.session.execute(sql, {"username": username})
     user = result.fetchone()
+
+    # Add user_id to jwt token
+    session["user_id"] = user[0]
     if not user:
         return "User not found"
 
