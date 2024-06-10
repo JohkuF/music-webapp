@@ -67,8 +67,7 @@ def index():
 @app.route("/home")
 @check_login
 def home():
-    print("STATE", get_signup_state(db))
-    songs = get_songs(17)
+    songs = get_songs(13)
     return render_template("home.html", songs=songs)
 
 
@@ -351,7 +350,6 @@ def allowed_file(filetype):
 def upload_file():
 
     if request.method == "POST":
-        print("POST")
         # check if the post request has the file part
         if "file" not in request.files:
             flash("No file part")
@@ -376,6 +374,7 @@ def upload_file():
             filename = secure_filename(file.filename)
             path = app.config["UPLOAD_FOLDER"]
 
+            # Check if filename already exists
             filepath = os.path.join(path, filename)
             if os.path.exists(filepath):
                 filename = find_new_filename(path, filename)
@@ -392,12 +391,9 @@ def upload_file():
             )
             db.session.commit()
 
-            # TODO: check if file already exists.
             request.files["file"].save(os.path.join(path, filename))
             # TODO: -maybe useless redirect - Anyway its wrong
             return redirect(url_for("upload_file", filename=filename))
-
-    print("NO POST")
     return render_template("/upload.html")
 
 
@@ -414,6 +410,11 @@ def stream_music(music_id):
     )
     result = db.session.execute(sql, {"song_id": music_id})
     filepath, filename = result.fetchone()
+
+    # Add . if not docker -> dev env
+    if not IS_DOCKER:
+        filepath = os.getcwd()
+        filename = "/data/" + filename
 
     if not filepath or not filename:
         # TODO propper error handling

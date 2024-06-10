@@ -1,7 +1,3 @@
-window.onload = function () {
-  // Fetch persons votes
-  
-};
 
 function toggleVote(icon) {
   var change = toggle(icon);

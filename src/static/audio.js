@@ -49,10 +49,12 @@ function getAudioSong(songId, songName) {
   songContainer = document.getElementById("musicContainer");
   songLabel = document.getElementById("offcanvasBottomLabel");
 
+  sessionStorage.setItem("songId", songId);
+
   const songCard = `
       <div id="musicContainer">
-        <audio controls autoplay style="width: 100%" id="audio">
-          <source src="stream/${songId}" type="audio/mp3" />
+        <audio controls autoplay onended="playNextSong()" style="width: 100%" id="audio">
+          <source id="audioSource" src="stream/${songId}" type="audio/mp3" />
         </audio>
       </div>
     `;
@@ -60,3 +62,38 @@ function getAudioSong(songId, songName) {
   songContainer.innerHTML = songCard;
   songLabel.textContent = songName;
 }
+
+function playNextSong() {
+  const currentSongId = parseInt(sessionStorage.getItem("songId"));
+  const songsString = sessionStorage.getItem("songIds");
+  const songs = JSON.parse(songsString);
+
+  const nextSongIndex = (songs.indexOf(currentSongId) + 1) % songs.length;
+  const nextSong = songs[nextSongIndex];
+
+  // play the next song
+  const svgElement = document.getElementById(`play-${nextSong}`);
+  svgElement.dispatchEvent(new Event("click"));
+}
+
+function extractNumbersFromIDs() {
+  let playElements = document.querySelectorAll('[id^="play-"]');
+
+  let playNumbers = [];
+
+  playElements.forEach((element) => {
+    let id = element.id;
+    let match = id.match(/^play-(\d+)$/);
+    if (match) {
+      playNumbers.push(Number(match[1]));
+    }
+  });
+
+  // Save the extracted numbers to session storage
+  sessionStorage.setItem("songIds", JSON.stringify(playNumbers));
+  console.log("Extracted numbers saved to sessionStorage:", playNumbers);
+}
+
+window.onload = function () {
+  extractNumbersFromIDs();
+};
