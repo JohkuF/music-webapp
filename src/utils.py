@@ -3,6 +3,9 @@ import functools
 from sqlalchemy import text
 from flask import session, redirect
 
+from .schemas import VoteSchema
+from .myenums import VoteType
+
 
 def check_login(func):
     """
@@ -58,3 +61,34 @@ def get_signup_state(db) -> bool:
     result = db.session.execute(sql).fetchone()
     print(result[1])
     return result[1]
+
+
+def check_vote(db, voteModel: VoteSchema) -> VoteType | bool:
+    """Check users logged vote"""
+
+    # Check if user has already voted similarly
+    sql = text(
+        """SELECT vote_type FROM likes
+        WHERE user_id = :user_id
+        AND target_id = :song_id
+        AND target_type = :target_type;"""
+    )
+
+    res = db.session.execute(
+        sql,
+        {
+            "user_id": session["user_id"],
+            "song_id": voteModel.id,
+            "target_type": "song",  # TODO: add target type check
+        },
+    ).fetchone()
+
+    print("user has voted prev", res)
+
+    if not res:
+        return False
+    try:
+        return VoteType(res[0])
+    except:
+        # TODO: log error
+        return VoteType.NONEVOTE

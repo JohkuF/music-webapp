@@ -7,4 +7,3 @@ from .myenums import VoteType, ChangeType
 class VoteSchema(BaseModel):
     id: int
     type: VoteType
-    change: ChangeType

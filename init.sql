@@ -43,6 +43,7 @@ CREATE TABLE song_metadata (
     plays INT,
     upvote INT,
     downvote INT,
+    nonevote INT,
     PRIMARY KEY (song_id)
 );
 

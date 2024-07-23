@@ -3,10 +3,10 @@ from enum import Enum
 class VoteType(Enum):
     UPVOTE = "upvote"
     DOWNVOTE = "downvote"
+    NONEVOTE = "nonevote"
 
-class ChangeType(Enum):
-    ON = "on"
-    OFF = "off"
+# TODO: add target type to add possibility to like comments
+
     
 class AcceptedFileTypes(Enum):
     MP3 = "audio/mpeg"
