@@ -20,7 +20,14 @@ function toggleVote(icon) {
   // Send info to server
   var change = toggle(icon);
   var [type, _, id] = icon.id.split("-");
-  sendPostRequestFetch("/v", parseInt(id), type, change);
+
+  if (change === "off")
+  {
+    type = "nonevote";
+  }
+
+  // Send request to backend
+  sendPostRequestFetch("/v", parseInt(id), type);
 }
 
 function toggle(icon) {
@@ -102,11 +109,10 @@ function getOtherVoteId(icon) {
   return otherVoteId;
 }
 
-function sendPostRequestFetch(url, id, type, change) {
+function sendPostRequestFetch(url, id, type) {
   const data = {
     id: id,
     type: type,
-    change: change,
   };
 
   fetch(url, {

@@ -21,6 +21,7 @@ from .utils import (
     is_admin,
     set_signup_state,
     get_signup_state,
+    check_vote,
 )
 from .sql_commands import (
     SQL_FILE_UPLOAD,
@@ -54,6 +55,7 @@ app.config["UPLOAD_FOLDER"] = os.getenv("UPLOAD_FOLDER")
 
 app.config["allow_signup"] = True
 
+# To use get_db() instead
 db = SQLAlchemy(app)
 
 
@@ -267,74 +269,77 @@ def register_vote():
 
 
 def process_voting(voteModel: VoteSchema) -> str:
-    """process voting (upvote/downvote)"""
+    """Process voting (upvote/downvote)"""
 
-    # Check if user has already voted similarly
-    sql = text(
-        """SELECT vote_type FROM likes
-        JOIN users ON likes.user_id = users.id
-        WHERE users.username = :username
-        AND target_id = :song_id
-        AND target_type = 'vote'
-        AND vote_type = :votetype"""
-    )
-    res = db.session.execute(
-        sql,
-        {
-            "username": session["username"],
-            "song_id": voteModel.id,
-            "votetype": voteModel.type.value,
-        },
-    ).fetchone()
+    user_id = session["user_id"]
+    target_id = voteModel.id
+    vote_type = voteModel.type.value
 
-    if res and voteModel.change == ChangeType.ON:
-        # The operation is already on database
-        # TODO: Do logging
-        print("value already in db")
+    # Check if user's vote is already counted in song_metadata
+    previous_vote = check_vote(db, voteModel)
+
+    if not previous_vote:
+        # Insert new vote
+        sql = """
+        -- Insert to likes
+        INSERT INTO likes (user_id, target_id, target_type, vote_type)
+        VALUES (:user_id, :target_id, :target_type, :vote_type);
+
+        """
+    elif previous_vote == voteModel.type:
         return (
-            json.dumps({"Unprocessable content": "Already voted similarly"}),
-            422,
+            json.dumps({"message": "Same vote already registered"}),
+            200,
             {"ContentType": "application/json"},
         )
+    else:
+        # Update existing vote
+        sql = """
+        -- Update likes
+        UPDATE likes
+        SET vote_type = :vote_type
+        WHERE user_id = :user_id AND target_id = :target_id AND target_type = 'song';
 
-    # Update the values
-    sql = text(
-        """UPDATE song_metadata 
-        SET {votetype} = {votetype} + {add_vote}
-        WHERE song_id = :song_id;
+        -- Adjust song_metadata for the old vote
+        UPDATE song_metadata
+        SET {prev_vote_type} = {prev_vote_type} - 1
+        WHERE song_id = :target_id;
 
-        -- Update likes if the user has already voted on the target
-        UPDATE likes 
-        SET target_type = 'vote', vote_type = :votetype
-        WHERE user_id = (SELECT id FROM users WHERE username = :username) AND target_id = :song_id;
-
-        -- Insert a new like if the user hasn't voted on the target
-        INSERT INTO likes (user_id, target_id, target_type, vote_type)
-        SELECT u.id, :song_id, 'vote', :votetype
-        FROM users u
-        WHERE u.username = :username
-        AND NOT EXISTS (
-            SELECT 1 FROM likes 
-            WHERE user_id = u.id AND target_id = :song_id
-        );
         """.format(
-            votetype=voteModel.type.value,
-            add_vote=1 if voteModel.change == ChangeType.ON else -1,
+            prev_vote_type=previous_vote.value, vote_type=vote_type
         )
+
+    sql += """
+        -- Update song_metadata with the new vote
+        UPDATE song_metadata
+        SET {vote_type} = {vote_type} + 1
+        WHERE song_id = :target_id;
+        """.format(
+        vote_type=vote_type
     )
 
+    print(text(sql))
+
     params = {
-        "song_id": voteModel.id,
-        "username": session["username"],
-        "votetype": (
-            voteModel.type.value if voteModel.change == ChangeType.ON else "none"
-        ),
+        "user_id": user_id,
+        "target_id": target_id,
+        "target_type": "song",
+        "vote_type": vote_type,
     }
 
-    db.session.execute(sql, params)
-    db.session.commit()
+    try:
+        # with db.session.begin():
+        db.session.execute(text(sql), params=params)
+        db.session.commit()
 
-    return json.dumps({"success": True}), 200, {"ContentType": "application/json"}
+        return json.dumps({"success": True}), 200, {"ContentType": "application/json"}
+    except Exception as e:
+        # db.session.rollback()
+        return (
+            json.dumps({"success": False, "error": str(e)}),
+            500,
+            {"ContentType": "application/json"},
+        )
 
 
 def allowed_file(filetype):
