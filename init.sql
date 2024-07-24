@@ -91,6 +91,14 @@ CREATE TABLE signup_state (
     allow_signup BOOLEAN
 );
 
+CREATE TABLE states (
+    id SERIAL PRIMARY KEY,
+    state_name TEXT,
+    allow_signup BOOLEAN
+);
+
+INSERT INTO states (state_name, allow_signup) VALUES ('signup', true), ('upload', true);
+
 INSERT INTO signup_state (allow_signup) VALUES (true);
 
 --GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO app_user;

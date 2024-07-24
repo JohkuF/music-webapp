@@ -45,22 +45,39 @@ def is_admin(db, user_id: int) -> bool:
     return False
 
 
+def _set_state(db, status: bool, name: str):
+    sql = text("UPDATE states SET allow_signup = :status WHERE state_name = :name;")
+    db.session.execute(sql, {"status": status, "name": name})
+    db.session.commit()
+
+
+def _get_state(db, name: str):
+    sql = text("SELECT * FROM states WHERE state_name = :name")
+    result = db.session.execute(sql, {"name": name}).fetchone()
+    return result[2]
+
+
 def set_signup_state(db, status: bool):
     """
     sets the signup state on or off
     """
-    sql = text("UPDATE signup_state SET allow_signup = :status1 WHERE id = 1;")
-    db.session.execute(sql, {"status1": status})
-    db.session.commit()
-
+    _set_state(db, status, "signup")
     return None
 
 
+def set_upload_state(db, status: bool):
+    """
+    sets the upload state on or off
+    """
+    _set_state(db, status, "upload")
+
+
 def get_signup_state(db) -> bool:
-    sql = text("SELECT * FROM signup_state WHERE id = 1;")
-    result = db.session.execute(sql).fetchone()
-    print(result[1])
-    return result[1]
+    return _get_state(db, "signup")
+
+
+def get_upload_state(db) -> bool:
+    return _get_state(db, "upload")
 
 
 def check_vote(db, voteModel: VoteSchema) -> VoteType | bool:
@@ -93,10 +110,20 @@ def check_vote(db, voteModel: VoteSchema) -> VoteType | bool:
         # TODO: log error
         return VoteType.NONEVOTE
 
+
 def get_user_likes(db, user_id: int) -> list:
     """Gets user likes on spesic songs to be shown on the frontend"""
-    sql = "SELECT target_id, target_type, vote_type FROM likes WHERE user_id = :user_id;"
+    sql = (
+        "SELECT target_id, target_type, vote_type FROM likes WHERE user_id = :user_id;"
+    )
     result = db.session.execute(text(sql), params={"user_id": user_id})
     likes = result.fetchall()
-    likes_list = [{'target_id': like.target_id, 'target_type': like.target_type, 'vote_type': like.vote_type} for like in likes]
+    likes_list = [
+        {
+            "target_id": like.target_id,
+            "target_type": like.target_type,
+            "vote_type": like.vote_type,
+        }
+        for like in likes
+    ]
     return likes_list

@@ -14,24 +14,31 @@
     <div class="container-lg">
       <h1>Settings</h1>
       {% if is_admin %}
-
-      <form action="/a" method="post">
-        <button type="submit" name="down" class="button btn btn-danger">
-          Shutdown signup
-        </button>
-        <button type="submit" name="up" class="button btn btn-warning">
-          Open signup
-        </button>
-      </form>
-
-      {% endif %}
-      <div class="row flex-column flex-md-row">
-        <div class="col-md-4">
-          <div class="list-group" id="list-tab" role="tablist">
-            {% include "song-list.html" %}
+      <div>
+        <h2>Admin settings</h2>
+        <div>
+          <p>Singup status: {{ is_signup  }}</p>
+          <form action="/a" method="post">
+            <button type="submit" name="login-down" class="button btn btn-danger">
+              Shutdown signup
+            </button>
+            <button type="submit" name="login-up" class="button btn btn-warning">
+              Open signup
+            </button>
           </div>
-        </div>
+          <div>
+            <p>Upload status: {{ is_upload  }}</p>
+            <form action="/a" method="post">
+              <button type="submit" name="upload-down" class="button btn btn-danger">
+                Shutdown signup
+              </button>
+              <button type="submit" name="upload-up" class="button btn btn-warning">
+                Open signup
+              </button>
+            </div>
+        </form>
       </div>
+      {% endif %}
     </div>
     {% endblock %} {% endif %}
   </body>

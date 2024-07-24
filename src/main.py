@@ -20,7 +20,9 @@ from .utils import (
     find_new_filename,
     is_admin,
     set_signup_state,
+    set_upload_state,
     get_signup_state,
+    get_upload_state,
     get_user_likes,
     check_vote,
 )
@@ -94,18 +96,30 @@ def library():
 @app.route("/settings")
 @check_login
 def settings():
-    return render_template("settings.html", is_admin=is_admin(db, session["user_id"]))
+    admin: bool = is_admin(db, session["user_id"])
+    if admin:
+        return render_template(
+            "settings.html",
+            is_admin=admin,
+            is_upload=get_upload_state(db),
+            is_signup=get_signup_state(db),
+        )
+    return render_template("settings.html", is_admin=admin)
 
 
 @app.route("/a", methods=["POST"])
 @check_login
 def admin_commands():
     if is_admin(db, session["user_id"]):
-        if "down" in request.form:
+        if "login-down" in request.form:
             print("TO FALSE")
             set_signup_state(db, False)
-        elif "up" in request.form:
+        elif "login-up" in request.form:
             set_signup_state(db, True)
+        elif "upload-down" in request.form:
+            set_upload_state(db, False)
+        elif "upload-up" in request.form:
+            set_upload_state(db, True)
 
         return redirect("/settings")
 
@@ -359,6 +373,9 @@ def allowed_file(filetype):
 def upload_file():
 
     if request.method == "POST":
+        if not get_upload_state(db):
+            return "Upload closed by admin"
+
         # check if the post request has the file part
         if "file" not in request.files:
             flash("No file part")
