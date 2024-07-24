@@ -1,7 +1,7 @@
 from enum import Enum
 from pydantic import BaseModel
 
-from .myenums import VoteType, ChangeType
+from .myenums import VoteType
 
 
 class VoteSchema(BaseModel):

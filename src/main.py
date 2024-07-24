@@ -14,7 +14,7 @@ from flask import render_template, request, session, redirect, flash, url_for, j
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from .schemas import VoteSchema
-from .myenums import VoteType, ChangeType, AcceptedFileTypes
+from .myenums import VoteType, AcceptedFileTypes
 from .utils import (
     check_login,
     find_new_filename,
