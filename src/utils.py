@@ -92,3 +92,11 @@ def check_vote(db, voteModel: VoteSchema) -> VoteType | bool:
     except:
         # TODO: log error
         return VoteType.NONEVOTE
+
+def get_user_likes(db, user_id: int) -> list:
+    """Gets user likes on spesic songs to be shown on the frontend"""
+    sql = "SELECT target_id, target_type, vote_type FROM likes WHERE user_id = :user_id;"
+    result = db.session.execute(text(sql), params={"user_id": user_id})
+    likes = result.fetchall()
+    likes_list = [{'target_id': like.target_id, 'target_type': like.target_type, 'vote_type': like.vote_type} for like in likes]
+    return likes_list
