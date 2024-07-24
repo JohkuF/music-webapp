@@ -21,6 +21,7 @@ from .utils import (
     is_admin,
     set_signup_state,
     get_signup_state,
+    get_user_likes,
     check_vote,
 )
 from .sql_commands import (
@@ -70,7 +71,8 @@ def index():
 @check_login
 def home():
     songs = get_songs(13)
-    return render_template("home.html", songs=songs)
+    likes = get_user_likes(db, session["user_id"])
+    return render_template("home.html", songs=songs, likes=likes)
 
 
 @app.route("/explore")
