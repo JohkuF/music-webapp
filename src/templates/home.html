@@ -9,13 +9,6 @@
       href="{{ url_for('static', filename='styles.css') }}"
     />
   </head>
-  <script type="text/javascript">
-    // Add likes from jinja to appData
-    window.appData = {
-        likes: {{ likes | tojson }}
-    };
-  </script>
-
   <body style="background: white" >
     {% if session.username %} {% extends 'base.html' %} {% block content %}
     <div class="container-lg">

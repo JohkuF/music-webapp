@@ -79,14 +79,16 @@ def home():
 @check_login
 def explore():
     songs = get_songs()
-    return render_template("explore.html", songs=songs)
+    likes = get_user_likes(db, session["user_id"])
+    return render_template("explore.html", songs=songs, likes=likes)
 
 
 @app.route("/library")
 @check_login
 def library():
     songs = get_songs(user_id=session["user_id"])
-    return render_template("library.html", songs=songs)
+    likes = get_user_likes(db, session["user_id"])
+    return render_template("library.html", songs=songs, likes=likes)
 
 
 @app.route("/settings")

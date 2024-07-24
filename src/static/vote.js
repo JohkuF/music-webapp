@@ -61,8 +61,6 @@ function updateAppData(id, type) {
 }
 
 function toggleVote(icon) {
-  console.log(window.appData.likes);
-
   var change = toggle(icon);
   var [type, _, id] = icon.id.split("-");
   id = parseInt(id);
