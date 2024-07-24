@@ -1,6 +1,4 @@
 window.onload = function (data) {
-  // Your code here
-
   if (window.appData) {
     // Turn on votes when needed
     var likes = window.appData.likes;
@@ -17,12 +15,10 @@ window.onload = function (data) {
 };
 
 function updateVoteOnScreen(newVote, id) {
-  // Get the count element
   let count = document.getElementById(`count-${id}`);
   if (count) {
     let voteCount = parseInt(count.textContent);
 
-    // Find the previous vote object
     let prevVoteObj = window.appData.likes.find(
       (like) => like.target_id === id
     );
