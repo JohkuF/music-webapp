@@ -143,7 +143,7 @@ def settings():
     if admin:
         return render_template(
             "settings.html",
-            is_afetchMdmin=admin,
+            is_admin=admin,
             is_upload=get_upload_state(db),
             is_signup=get_signup_state(db),
         )
