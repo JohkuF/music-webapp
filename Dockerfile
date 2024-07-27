@@ -16,10 +16,10 @@ COPY pyproject.toml .
 
 # Create a directory for data
 RUN mkdir /data
+RUN mkdir /logs
 
 # Install dependencies
 RUN poetry install --no-dev
 
 # Set the entrypoint to use Gunicorn
-# TODO optimize the worker amount
 ENTRYPOINT ["poetry", "run", "gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "src.main:app"]
