@@ -1,7 +1,9 @@
 <script type="text/javascript">
   // Add likes from jinja to appData
   window.appData = {
-      likes: {{ likes | tojson }}
+      likes: {{ likes | tojson }},
+      songs: {{ appData_songs | tojson }},
+      messages: {{ messages | tojson }}
   };
 </script>
 {% for song in songs %}
@@ -12,6 +14,7 @@
   href="#list-{{song.id}}"
   role="tab"
   aria-controls="list-{{song.id}}"
+  onfocus="initMessages({{song.id}})"
 >
   <div class="row align-items-center">
     <div class="col-2 col-sm-2">
@@ -127,7 +130,7 @@
     </div>
   </div>
 </a>
-
+{% endfor %}
 <script src="{{ url_for('static', filename='audio.js') }}"></script>
 <script src="{{ url_for('static', filename='vote.js') }}"></script>
-{% endfor %}
+<script src="{{ url_for('static', filename='messages.js') }}"></script>

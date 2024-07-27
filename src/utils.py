@@ -1,3 +1,4 @@
+import json
 import os
 import functools
 from sqlalchemy import text
@@ -39,7 +40,7 @@ def is_admin(db, user_id: int) -> bool:
     """
     sql = text("SELECT users.role FROM users WHERE users.id = :user_id;")
     result = db.session.execute(sql, {"user_id": user_id}).fetchone()
-    # TODO use enum
+
     if result[0] == "admin":
         return True
     return False
@@ -127,3 +128,21 @@ def get_user_likes(db, user_id: int) -> list:
         for like in likes
     ]
     return likes_list
+
+
+def log_user(username, message, **kwargs):
+    """Helper for logging"""
+    return json.dumps({"username": username, "message": message, **kwargs})
+
+
+def is_valid_song_name(name: str) -> bool:
+    """Rules for invalid filenames"""
+    if name.strip() == "":
+        return False
+
+    return True
+
+
+def songs_appData(songs) -> dict:
+    """Parse songs sql request to be put into appData"""
+    return [{"id": song.song_id, "song_name": song.song_name} for song in songs]

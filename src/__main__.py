@@ -1,4 +1,6 @@
 import os
+import json
+import logging
 from .main import app
 
 if __name__ == "__main__":
@@ -9,4 +11,17 @@ if __name__ == "__main__":
         f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@0.0.0.0:8123/musicApp"
     )
     app.debug = True
+
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format=json.dumps(
+            {
+                "timestamp": "%(asctime)s",
+                "level": "%(levelname)s",
+                "message": "%(message)s",
+            }
+        ),
+        handlers=[logging.StreamHandler()],
+    )
+
     app.run(port=8080)

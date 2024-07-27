@@ -77,10 +77,10 @@ SQL_FETCH_MESSAGES_GENERAL = text(
 
 
 SQL_FETCH_MESSAGES_ON_SONG = text(
-    """SELECT users.username, messages.content
+    """SELECT users.username, messages.song_id, messages.content
        FROM messages
        JOIN users ON messages.user_id = users.id
-       WHERE messages.song_id = :song_id;"""
+       WHERE (:song_id IS NULL OR messages.song_id = :song_id);"""
 )
 
 SQL_UPDATE_SONG_UPVOTE = text(

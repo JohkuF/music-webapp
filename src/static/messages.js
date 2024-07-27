@@ -11,19 +11,19 @@ function sanitize(string) {
   return string.replace(reg, (match) => map[match]);
 }
 
-// Fetch messages
-async function fetchMessages() {
-  var id = "{{ song_id }}";
+async function initMessages(id) {
+  // Init songs messages onfocus
 
   try {
-    const response = await fetch(`/messages/${id}`);
-    const messages = await response.json();
+    let messages = appData.messages;
+    if (!messages) return;
+    // Filter -> Only take own ids
+    messages = messages.filter((item) => item.song_id === id);
 
-    var id_extra = 0;
-    // Add messages to the containers
     const messagesContainer = document.getElementById(
       `messagesContainer-${id}`
     );
+    var id_extra = 0;
 
     messages.reverse().forEach((message) => {
       username = sanitize(message.username);
@@ -35,15 +35,16 @@ async function fetchMessages() {
               <p>${content}</p>
               <div class="d-flex justify-content-between">
                 <div class="d-flex flex-row align-items-center">
-                  <p class="small mb-0 ms-2">${username}</p>
+                <p class="small mb-0 ms-2">${username}</p>
                 </div>
               </div>
             </div>
           </div>`;
       id_extra++;
+
       messagesContainer.insertAdjacentHTML("beforeend", messageCard);
     });
   } catch (error) {
-    console.error("Error fetching messages: ", error);
+    console.log(error);
   }
 }

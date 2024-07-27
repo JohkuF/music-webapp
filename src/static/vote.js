@@ -1,5 +1,5 @@
 window.onload = function (data) {
-  if (window.appData) {
+  if (window.appData.likes) {
     // Turn on votes when needed
     var likes = window.appData.likes;
     likes.forEach((like) => {
@@ -8,7 +8,7 @@ window.onload = function (data) {
       if (voteType === "upvote" || voteType === "downvote") {
         // Turn upvote or downvote on
         let voteOFF = document.getElementById(`${voteType}-off-${targetId}`);
-        toggle(voteOFF);
+        if (voteOFF) toggle(voteOFF);
       }
     });
   }

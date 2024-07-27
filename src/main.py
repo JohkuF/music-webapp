@@ -1,6 +1,5 @@
 # TODO: Database add max char size
 import os
-import enum
 import bleach
 import json
 import logging
@@ -19,12 +18,15 @@ from .utils import (
     check_login,
     find_new_filename,
     is_admin,
+    is_valid_song_name,
+    log_user,
     set_signup_state,
     set_upload_state,
     get_signup_state,
     get_upload_state,
     get_user_likes,
     check_vote,
+    songs_appData,
 )
 from .sql_commands import (
     SQL_FILE_UPLOAD,
@@ -35,8 +37,8 @@ from .sql_commands import (
 )
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
-# TODO: check if compressions if good tradeoff
-# from flask_compress import Compress
+log = logging.getLogger("werkzeug")
+log.setLevel(logging.ERROR)
 
 load_dotenv(".env")
 app.secret_key = os.getenv("SECRET_KEY")
@@ -62,6 +64,11 @@ app.config["allow_signup"] = True
 db = SQLAlchemy(app)
 
 
+@app.errorhandler(404)
+def not_found_error(error):
+    return "Page not found :(", 404
+
+
 @app.route("/")
 def index():
     if "username" in session:
@@ -74,7 +81,18 @@ def index():
 def home():
     songs = get_songs(13)
     likes = get_user_likes(db, session["user_id"])
-    return render_template("home.html", songs=songs, likes=likes)
+
+    # Data to be put into appData
+    appData_songs = songs_appData(songs)
+    messages = get_messages()
+
+    return render_template(
+        "home.html",
+        songs=songs,
+        likes=likes,
+        appData_songs=appData_songs,
+        messages=messages,
+    )
 
 
 @app.route("/explore")
@@ -82,7 +100,18 @@ def home():
 def explore():
     songs = get_songs()
     likes = get_user_likes(db, session["user_id"])
-    return render_template("explore.html", songs=songs, likes=likes)
+
+    # Data to be put into appData
+    appData_songs = songs_appData(songs)
+    messages = get_messages()
+
+    return render_template(
+        "explore.html",
+        songs=songs,
+        likes=likes,
+        appData_songs=appData_songs,
+        messages=messages,
+    )
 
 
 @app.route("/library")
@@ -90,7 +119,18 @@ def explore():
 def library():
     songs = get_songs(user_id=session["user_id"])
     likes = get_user_likes(db, session["user_id"])
-    return render_template("library.html", songs=songs, likes=likes)
+
+    # Data to be put into appData
+    appData_songs = songs_appData(songs)
+    messages = get_messages()
+
+    return render_template(
+        "library.html",
+        songs=songs,
+        likes=likes,
+        appData_songs=appData_songs,
+        messages=messages,
+    )
 
 
 @app.route("/settings")
@@ -100,7 +140,7 @@ def settings():
     if admin:
         return render_template(
             "settings.html",
-            is_admin=admin,
+            is_afetchMdmin=admin,
             is_upload=get_upload_state(db),
             is_signup=get_signup_state(db),
         )
@@ -112,7 +152,6 @@ def settings():
 def admin_commands():
     if is_admin(db, session["user_id"]):
         if "login-down" in request.form:
-            print("TO FALSE")
             set_signup_state(db, False)
         elif "login-up" in request.form:
             set_signup_state(db, True)
@@ -126,20 +165,27 @@ def admin_commands():
     return json.dumps({"UNAUTHORIZED": True}), 401, {"ContentType": "application/json"}
 
 
+@app.route("/messages", defaults={"song_id": None}, strict_slashes=False)
 @app.route("/messages/<path:song_id>")
-def messages(song_id):
-    assert song_id == request.view_args["song_id"]
-    result = db.session.execute(SQL_FETCH_MESSAGES_ON_SONG, {"song_id": song_id})
-    messages = result.fetchall()
-    messages_list = [{"username": row[0], "content": row[1]} for row in messages]
+def get_messages(song_id=None):
 
-    return jsonify(messages_list)
+    result = db.session.execute(SQL_FETCH_MESSAGES_ON_SONG, {"song_id": song_id})
+
+    messages = result.fetchall()
+    messages_list = [
+        {
+            "username": message.username,
+            "song_id": message.song_id,
+            "content": message.content,
+        }
+        for message in messages
+    ]
+
+    return messages_list
 
 
 @app.route("/songs")
 def get_songs(n: int | None = None, user_id: int | None = None):
-    print("Songs for", user_id)
-
     sql = """SELECT songs.*, song_metadata.*
         FROM songs
         LEFT JOIN song_metadata ON songs.id = song_metadata.song_id
@@ -169,8 +215,8 @@ def send(song_id):
     assert song_id == request.view_args["song_id"]
     song_id = bleach.clean(song_id)
 
-    content = request.form["content"]
-    username = session["username"]
+    content = bleach.clean(request.form["content"])
+    username = bleach.clean(session["username"])
 
     sql = text(
         """INSERT INTO messages (song_id, user_id, upload_time, content)
@@ -183,15 +229,16 @@ def send(song_id):
             sql, {"username": username, "song_id": song_id, "content": content}
         )
         db.session.commit()
+        logging.info(log_user(username, "comment", song_id=song_id, content=content))
+
     except Exception as e:
         logging.error(f"Error executing SQL: {e}")
 
     result = db.session.execute(SQL_FETCH_MESSAGES_ON_SONG, {"song_id": song_id})
     messages = result.fetchall()
-    # TODO: compine /messages and this fuggly thing to one function
     # Dynamic comment loading -> music doesn't stop
     response = ""
-    for message in reversed(messages):
+    for message in messages:
         content = bleach.clean(message.content)
         username = bleach.clean(message.username)
         response += f"""
@@ -206,7 +253,6 @@ def send(song_id):
               </div>
             </div>
         """
-    logging.warning(response)
 
     return response
 
@@ -214,8 +260,8 @@ def send(song_id):
 @app.route("/login", methods=["POST"])
 def login():
 
-    username = request.form["username"]
-    password = request.form["password"]
+    username = bleach.clean(request.form["username"])
+    password = bleach.clean(request.form["password"])
 
     sql = text("SELECT id, password FROM users WHERE username=:username")
     result = db.session.execute(sql, {"username": username})
@@ -229,12 +275,14 @@ def login():
 
     if check_password_hash(user[1], password):
         session["username"] = username
+        logging.info(log_user(username, "login"))
 
     return redirect("/home")
 
 
 @app.route("/logout", methods=["POST"])
 def logout():
+    logging.info(log_user(session["username"], "logout"))
     del session["username"]
     return redirect("/")
 
@@ -245,22 +293,26 @@ def signup():
     if not get_signup_state(db):
         return "Signup closed by admin"
 
-    # TODO Bleach username
-    username = request.form["username"]
+    username = bleach.clean(request.form["username"])
+    _password = bleach.clean(request.form["password"])
+    hash_pass = generate_password_hash(_password)
+
     # Check if username is taken
     sql = text("SELECT id, password FROM users WHERE username=:username")
     result = db.session.execute(sql, {"username": username})
     user = result.fetchone()
-    if user:
-        return "User alre    print(d)ady exists"
 
-    hash_pass = generate_password_hash(request.form["password"])
+    if user:
+        return "User already exists"
 
     sql = text(
         "INSERT INTO users (username, password, role) VALUES (:username, :password, 'user')"
     )
+
     db.session.execute(sql, {"username": username, "password": hash_pass})
     db.session.commit()
+
+    logging.info(log_user(username, "signup"))
 
     return redirect("/")
 
@@ -336,8 +388,6 @@ def process_voting(voteModel: VoteSchema) -> str:
         vote_type=vote_type
     )
 
-    print(text(sql))
-
     params = {
         "user_id": user_id,
         "target_id": target_id,
@@ -346,13 +396,12 @@ def process_voting(voteModel: VoteSchema) -> str:
     }
 
     try:
-        # with db.session.begin():
         db.session.execute(text(sql), params=params)
         db.session.commit()
 
         return json.dumps({"success": True}), 200, {"ContentType": "application/json"}
     except Exception as e:
-        # db.session.rollback()
+        logging.error(e)
         return (
             json.dumps({"success": False, "error": str(e)}),
             500,
@@ -367,7 +416,6 @@ def allowed_file(filetype):
     # return file_type in [ftype.value for ftype in AcceptedFileTypes]
 
 
-# TODO: add api admin command to turn of uploads
 @app.route("/upload/", methods=["GET", "POST"])
 @check_login
 def upload_file():
@@ -383,10 +431,12 @@ def upload_file():
 
         file = request.files["file"]
 
-        # TODO: use pydantic
-        username = session["username"]
-        song_name = request.form["songName"]
-        song_description = request.form.get("description", None)
+        username = bleach.clean(session["username"])
+        song_name = bleach.clean(request.form["songName"]).strip()
+        song_description = bleach.clean(request.form.get("description", None))
+
+        if not is_valid_song_name(song_name):
+            return "Song name is not valid"
 
         # TODO don't accept empty name
         if song_description == "":
@@ -426,7 +476,6 @@ def upload_file():
 @app.route("/stream/<int:music_id>")
 @check_login
 def stream_music(music_id):
-    # TODO: add better logging for music streaming
 
     sql = text(
         """
@@ -443,8 +492,17 @@ def stream_music(music_id):
         filename = "/data/" + filename
 
     if not filepath or not filename:
-        # TODO propper error handling
-        return "Naah"
+
+        err_msg = "Song not found " + filename
+        logging.error(err_msg)
+
+        return (
+            json.dumps({"success": False, "error": err_msg}),
+            500,
+            {"ContentType": "application/json"},
+        )
+
+    logging.info(log_user(session["username"], "Streaming song", song_name=filename))
 
     return send_file(filepath + filename, mimetype="audio/mp3")
     # TODO: Use this for radio feature
