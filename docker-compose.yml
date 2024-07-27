@@ -1,5 +1,4 @@
-version: '3.8'
-
+#version: '3.8'
 services:
   postgres:
     image: postgres:14.5
@@ -25,6 +24,7 @@ services:
         - ./src:/app/src
         - ./pyproject.toml:/app/pyproject.toml
         - ./data:/data
+        - ./logs:/logs
     env_file:
       - .env
     environment:
