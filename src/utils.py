@@ -1,5 +1,6 @@
-import json
 import os
+import json
+import logging
 import functools
 from sqlalchemy import text
 from flask import session, redirect
@@ -7,6 +8,21 @@ from flask import session, redirect
 from .schemas import VoteSchema
 from .myenums import VoteType
 
+def setup_login(IS_DOCKER):
+    log_path = "/logs/music-webapp.log" if IS_DOCKER else "logi.log"
+    file_handler = logging.FileHandler(log_path)
+
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format=json.dumps(
+            {
+                "timestamp": "%(asctime)s",
+                "level": "%(levelname)s",
+                "message": "%(message)s",
+            }
+        ),
+        handlers=[logging.StreamHandler(), file_handler],
+    )
 
 def check_login(func):
     """
@@ -101,8 +117,6 @@ def check_vote(db, voteModel: VoteSchema) -> VoteType | bool:
         },
     ).fetchone()
 
-    print("user has voted prev", res)
-
     if not res:
         return False
     try:
@@ -132,7 +146,7 @@ def get_user_likes(db, user_id: int) -> list:
 
 def log_user(username, message, **kwargs):
     """Helper for logging"""
-    return json.dumps({"username": username, "message": message, **kwargs})
+    return {"username": username, "message": message, **kwargs}
 
 
 def is_valid_song_name(name: str) -> bool:

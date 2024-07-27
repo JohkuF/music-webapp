@@ -1,7 +1,9 @@
 import os
 import json
 import logging
-from .main import app
+
+from src.utils import setup_login
+from .main import IS_DOCKER, app
 
 if __name__ == "__main__":
     POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
@@ -12,16 +14,6 @@ if __name__ == "__main__":
     )
     app.debug = True
 
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format=json.dumps(
-            {
-                "timestamp": "%(asctime)s",
-                "level": "%(levelname)s",
-                "message": "%(message)s",
-            }
-        ),
-        handlers=[logging.StreamHandler()],
-    )
+    setup_login(IS_DOCKER)
 
     app.run(port=8080)
