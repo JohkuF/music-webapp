@@ -153,7 +153,6 @@ def settings():
 @app.route("/a", methods=["POST"])
 @check_login
 def action_commands():
-    print(request.form)
     if request.form["request_type"] == "admin-command" and is_admin(
         db, session["user_id"]
     ):
