@@ -75,7 +75,10 @@
           </div>
         </div>
       </nav>
-      {% include 'login-component.html' %} {% include 'signup-component.html' %}
+      {% with message = get_flashed_messages() %} {% if message %}
+      <h1 class="row justify-content-center bg-warning">{{message[0]}}</h1>
+      {% endif %} {% endwith %} {% include 'login-component.html' %} {% include
+      'signup-component.html' %}
       <div
         class="p-3 mb-2 cool-background1 text-success-emphasis text-center row"
         style="height: 100%"

@@ -14,6 +14,9 @@ function sanitize(string) {
 async function initMessages(id) {
   // Init songs messages onfocus
 
+  // Check if already inited
+  if (document.getElementById(`messagesContainer-${id}`).innerHTML) return;
+
   try {
     let messages = appData.messages;
     if (!messages) return;
