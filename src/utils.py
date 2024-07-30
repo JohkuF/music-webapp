@@ -151,9 +151,12 @@ def log_user(username, message, **kwargs):
     return {"username": username, "message": message, **kwargs}
 
 
-def is_valid_song_name(name: str) -> bool:
-    """Rules for invalid filenames"""
-    if name.strip() == "":
+def is_valid_name(name: str) -> bool:
+    """Rules for invalid names"""
+    name = name.strip()
+    if name == "":
+        return False
+    elif name == "[deleted]":
         return False
 
     return True

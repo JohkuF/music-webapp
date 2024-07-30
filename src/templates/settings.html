@@ -12,33 +12,89 @@
   <body style="background: white">
     {% if session.username %} {% extends 'base.html' %} {% block content %}
     <div class="container-lg">
-      <h1>Settings</h1>
+      <div class="row p-3">
+        <h1>Settings</h1>
+        <p>username: {{ session.username }}</p>
+      </div>
       {% if is_admin %}
-      <div>
+      <div class="row p-3">
         <h2>Admin settings</h2>
         <div>
-          <p>Singup status: {{ is_signup  }}</p>
+          <p>Singup status: {{ is_signup }}</p>
           <form action="/a" method="post">
-            <button type="submit" name="login-down" class="button btn btn-danger">
+            <button
+              type="submit"
+              name="login-down"
+              class="button btn btn-danger"
+            >
               Shutdown signup
             </button>
-            <button type="submit" name="login-up" class="button btn btn-warning">
+            <input type="hidden" name="request_type" value="admin-command" />
+            <button
+              type="submit"
+              name="login-up"
+              class="button btn btn-warning"
+            >
               Open signup
             </button>
-          </div>
-          <div>
-            <p>Upload status: {{ is_upload  }}</p>
-            <form action="/a" method="post">
-              <button type="submit" name="upload-down" class="button btn btn-danger">
-                Shutdown upload
-              </button>
-              <button type="submit" name="upload-up" class="button btn btn-warning">
-                Open upload
-              </button>
-            </div>
-        </form>
+          </form>
+        </div>
+        <div>
+          <p>Upload status: {{ is_upload }}</p>
+          <form action="/a" method="post">
+            <button
+              type="submit"
+              name="upload-down"
+              class="button btn btn-danger"
+            >
+              Shutdown upload
+            </button>
+            <input type="hidden" name="request_type" value="admin-command" />
+            <button
+              type="submit"
+              name="upload-up"
+              class="button btn btn-warning"
+            >
+              Open upload
+            </button>
+          </form>
+        </div>
       </div>
       {% endif %}
+      <div class="row p-3">
+        <h2>User settings</h2>
+        <p>Reset password:</p>
+        {% with messages = get_flashed_messages(with_categories=True) %}
+        {% if messages %}
+          {% for _, message in messages %}
+          <h1 style="color: green;"> {{message}} </h1>
+          {% endfor %}
+        {% endif %}
+        {% endwith %}
+        <div class="row">
+          <form action="/a" method="POST">
+            <div class="mb-3">
+              <input
+                required
+                name="password"
+                type="password"
+                class="form-control"
+                id="passwordReset"
+              />
+            </div>
+
+            <input type="hidden" name="request_type" value="password_reset" />
+            <button type="submit" class="btn btn-primary">Submit</button>
+          </form>
+        </div>
+        <div class="row p-3">
+          <p>Delete account: (does not delete songs)</p>
+          <form action="/a" method="POST">
+            <input type="hidden" name="request_type" value="account_delete" />
+            <button type="submit" class="btn btn-outline-danger">Delete account</button>
+          </form>
+        </div>
+      </div>
     </div>
     {% endblock %} {% endif %}
   </body>

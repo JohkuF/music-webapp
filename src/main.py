@@ -18,7 +18,7 @@ from .utils import (
     check_login,
     find_new_filename,
     is_admin,
-    is_valid_song_name,
+    is_valid_name,
     log_user,
     set_signup_state,
     set_upload_state,
@@ -152,8 +152,10 @@ def settings():
 
 @app.route("/a", methods=["POST"])
 @check_login
-def admin_commands():
-    if is_admin(db, session["user_id"]):
+def action_commands():
+    if request.form["request_type"] == "admin-command" and is_admin(
+        db, session["user_id"]
+    ):
         if "login-down" in request.form:
             set_signup_state(db, False)
         elif "login-up" in request.form:
@@ -165,7 +167,56 @@ def admin_commands():
 
         return redirect("/settings")
 
-    return json.dumps({"UNAUTHORIZED": True}), 401, {"ContentType": "application/json"}
+    elif request.form["request_type"] == "password_reset":
+        # TODO: reset password
+        try:
+            _new_password = bleach.clean(request.form["password"])
+            hashed_password = generate_password_hash(_new_password)
+            sql = text(
+                """
+                UPDATE users
+                SET password=:hashed_password
+                WHERE username=:username AND id=:user_id"""
+            )
+            db.session.execute(
+                sql,
+                {
+                    "hashed_password": hashed_password,
+                    "username": session["username"],
+                    "user_id": session["user_id"],
+                },
+            )
+            db.session.commit()
+            flash("Password updated", "success")
+            logging.info(log_user(session["username"], "Changed password"))
+
+        except Exception as e:
+            logging.error(log_user(session["username"], e))
+
+        return redirect("/settings")
+
+    elif request.form["request_type"] == "account_delete":
+
+        sql = text(
+            """
+        UPDATE users
+        SET username = '[deleted]',
+            password = '[deleted]'
+        WHERE username = :username AND id = :user_id
+        """
+        )
+
+        db.session.execute(
+            sql, {"username": session["username"], "user_id": session["user_id"]}
+        )
+
+        db.session.commit()
+
+        logging.info(log_user(session["username"], "User deleted"))
+        del session["username"]
+        return redirect("/")
+
+    return redirect("/setting")
 
 
 @app.route("/messages", defaults={"song_id": None}, strict_slashes=False)
@@ -296,7 +347,11 @@ def signup():
     if not get_signup_state(db):
         return "Signup closed by admin"
 
-    username = bleach.clean(request.form["username"])
+    username = bleach.clean(request.form["username"]).strip()
+    if not is_valid_name(username):
+        flash("Username is not valid")
+        return redirect("/")
+
     _password = bleach.clean(request.form["password"])
     hash_pass = generate_password_hash(_password)
 
@@ -438,7 +493,7 @@ def upload_file():
         song_name = bleach.clean(request.form["songName"]).strip()
         song_description = bleach.clean(request.form.get("description", None))
 
-        if not is_valid_song_name(song_name):
+        if not is_valid_name(song_name):
             return "Song name is not valid"
 
         # TODO don't accept empty name
