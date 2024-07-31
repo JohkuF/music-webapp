@@ -82,7 +82,8 @@ def index():
 @app.route("/home")
 @check_login
 def home():
-    songs = get_songs(13)
+    songs = get_songs(13, is_public=True)
+    print(songs)
     likes = get_user_likes(db, session["user_id"])
 
     # Data to be put into appData
@@ -120,7 +121,7 @@ def explore():
 @app.route("/library")
 @check_login
 def library():
-    songs = get_songs(user_id=session["user_id"])
+    songs = get_songs(user_id=session["user_id"], is_public=None)
     likes = get_user_likes(db, session["user_id"])
 
     # Data to be put into appData
@@ -238,17 +239,20 @@ def get_messages(song_id=None):
     return messages_list
 
 
-@app.route("/songs")
-def get_songs(n: int | None = None, user_id: int | None = None):
-    sql = """SELECT songs.*, song_metadata.*
-        FROM songs
-        LEFT JOIN song_metadata ON songs.id = song_metadata.song_id
-        LEFT JOIN uploads u ON u.song_id = songs.id
-        WHERE (:user_id IS NULL OR u.user_id = :user_id)
-        ORDER BY (song_metadata.upvote - song_metadata.downvote) DESC
-    """
+@app.route("/songs", methods=["post"])
+def get_songs(
+    n: int | None = None, is_public: bool | None = True, user_id: int | None = None
+):
 
-    params = {"user_id": user_id}
+    sql = """SELECT songs.*, song_metadata.*
+             FROM songs
+             LEFT JOIN song_metadata ON songs.id = song_metadata.song_id
+             LEFT JOIN uploads u ON u.song_id = songs.id
+             WHERE (:user_id IS NULL OR u.user_id = :user_id)
+               AND (:is_public IS NULL OR songs.is_public = :is_public)
+             ORDER BY (song_metadata.upvote - song_metadata.downvote) DESC
+    """
+    params = {"user_id": user_id, "is_public": is_public}
     if n:
         sql += "\nLIMIT :limit"
         params["limit"] = n
@@ -332,6 +336,9 @@ def login():
         logging.info(log_user(username, "login"))
 
     return redirect("/home")
+
+
+# TODO:TODO:TODO add is_public to the query
 
 
 @app.route("/logout", methods=["POST"])
@@ -479,19 +486,26 @@ def allowed_file(filetype):
 def upload_file():
 
     if request.method == "POST":
+
         if not get_upload_state(db):
             return "Upload closed by admin"
 
         # check if the post request has the file part
         if "file" not in request.files:
+            # TODO: flash not implemented in the frontend
             flash("No file part")
             return redirect(request.url)
 
         file = request.files["file"]
 
+        print(request.form)
+
         username = bleach.clean(session["username"])
         song_name = bleach.clean(request.form["songName"]).strip()
         song_description = bleach.clean(request.form.get("description", None))
+
+        _is_public = bleach.clean(request.form.get("is_public", ""))
+        is_public = _is_public == "on"
 
         if not is_valid_name(song_name):
             return "Song name is not valid"
@@ -513,12 +527,14 @@ def upload_file():
             if os.path.exists(filepath):
                 filename = find_new_filename(path, filename)
 
+            # TODO:TODO:TODO add is_public to the query
             db.session.execute(
                 SQL_FILE_UPLOAD,
                 {
                     "username": username,
                     "song_name": song_name,
                     "song_description": song_description,
+                    "is_public": is_public,
                     "filepath": path,
                     "filename": filename,
                 },
