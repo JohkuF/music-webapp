@@ -82,7 +82,7 @@ def index():
 @app.route("/home")
 @check_login
 def home():
-    songs = get_songs(13)
+    songs = get_songs(13, is_public=True)
     likes = get_user_likes(db, session["user_id"])
 
     # Data to be put into appData
@@ -120,7 +120,7 @@ def explore():
 @app.route("/library")
 @check_login
 def library():
-    songs = get_songs(user_id=session["user_id"])
+    songs = get_songs(user_id=session["user_id"], is_public=None)
     likes = get_user_likes(db, session["user_id"])
 
     # Data to be put into appData
@@ -153,7 +153,9 @@ def settings():
 @app.route("/a", methods=["POST"])
 @check_login
 def action_commands():
-    if request.form["request_type"] == "admin-command" and is_admin(
+    """For handling different actions"""
+
+    if request.form.get("request_type") == "admin-command" and is_admin(
         db, session["user_id"]
     ):
         if "login-down" in request.form:
@@ -167,7 +169,7 @@ def action_commands():
 
         return redirect("/settings")
 
-    elif request.form["request_type"] == "password_reset":
+    elif request.form.get("request_type") == "password_reset":
         # TODO: reset password
         try:
             _new_password = bleach.clean(request.form["password"])
@@ -195,7 +197,7 @@ def action_commands():
 
         return redirect("/settings")
 
-    elif request.form["request_type"] == "account_delete":
+    elif request.form.get("request_type") == "account_delete":
 
         sql = text(
             """
@@ -215,6 +217,40 @@ def action_commands():
         logging.info(log_user(session["username"], "User deleted"))
         del session["username"]
         return redirect("/")
+
+    elif is_public := request.form.get("is_public_song"):
+        is_public = {"true": True, "false": False}.get(is_public, None)
+        assert is_public is not None
+
+        sql = """
+            UPDATE songs s
+            SET is_public = :is_public
+            FROM uploads u
+            WHERE (s.id = :song_id) AND 
+                  (s.id = u.song_id) AND 
+                  (u.user_id = :user_id);
+        """
+
+        db.session.execute(
+            text(sql),
+            {
+                "is_public": is_public,
+                "song_id": request.args["song_id"],
+                "user_id": session["user_id"],
+            },
+        )
+        db.session.commit()
+
+        logging.info(
+            log_user(
+                session["username"],
+                "Changed song rigths",
+                song_id=request.args["song_id"],
+                is_public=is_public,
+            )
+        )
+
+        return jsonify("Form processed successfully", 200)
 
     return redirect("/setting")
 
@@ -238,17 +274,20 @@ def get_messages(song_id=None):
     return messages_list
 
 
-@app.route("/songs")
-def get_songs(n: int | None = None, user_id: int | None = None):
-    sql = """SELECT songs.*, song_metadata.*
-        FROM songs
-        LEFT JOIN song_metadata ON songs.id = song_metadata.song_id
-        LEFT JOIN uploads u ON u.song_id = songs.id
-        WHERE (:user_id IS NULL OR u.user_id = :user_id)
-        ORDER BY (song_metadata.upvote - song_metadata.downvote) DESC
-    """
+@app.route("/songs", methods=["post"])
+def get_songs(
+    n: int | None = None, is_public: bool | None = True, user_id: int | None = None
+):
 
-    params = {"user_id": user_id}
+    sql = """SELECT songs.*, song_metadata.*, u.user_id
+             FROM songs
+             LEFT JOIN song_metadata ON songs.id = song_metadata.song_id
+             LEFT JOIN uploads u ON u.song_id = songs.id
+             WHERE (:user_id IS NULL OR u.user_id = :user_id)
+               AND (:is_public IS NULL OR songs.is_public = :is_public)
+             ORDER BY (song_metadata.upvote - song_metadata.downvote) DESC
+    """
+    params = {"user_id": user_id, "is_public": is_public}
     if n:
         sql += "\nLIMIT :limit"
         params["limit"] = n
@@ -275,6 +314,10 @@ def send(song_id):
     sql = text(
         """INSERT INTO messages (song_id, user_id, upload_time, content)
     SELECT :song_id, id, NOW(), :content FROM users WHERE username = :username;
+
+    UPDATE song_metadata
+    SET comments = comments + 1 
+    WHERE song_id = :song_id;
     """
     )
 
@@ -332,6 +375,9 @@ def login():
         logging.info(log_user(username, "login"))
 
     return redirect("/home")
+
+
+# TODO:TODO:TODO add is_public to the query
 
 
 @app.route("/logout", methods=["POST"])
@@ -479,11 +525,13 @@ def allowed_file(filetype):
 def upload_file():
 
     if request.method == "POST":
+
         if not get_upload_state(db):
             return "Upload closed by admin"
 
         # check if the post request has the file part
         if "file" not in request.files:
+            # TODO: flash not implemented in the frontend
             flash("No file part")
             return redirect(request.url)
 
@@ -492,6 +540,9 @@ def upload_file():
         username = bleach.clean(session["username"])
         song_name = bleach.clean(request.form["songName"]).strip()
         song_description = bleach.clean(request.form.get("description", None))
+
+        _is_public = bleach.clean(request.form.get("is_public", ""))
+        is_public = _is_public == "on"
 
         if not is_valid_name(song_name):
             return "Song name is not valid"
@@ -513,12 +564,14 @@ def upload_file():
             if os.path.exists(filepath):
                 filename = find_new_filename(path, filename)
 
+            # TODO:TODO:TODO add is_public to the query
             db.session.execute(
                 SQL_FILE_UPLOAD,
                 {
                     "username": username,
                     "song_name": song_name,
                     "song_description": song_description,
+                    "is_public": is_public,
                     "filepath": path,
                     "filename": filename,
                 },
@@ -561,6 +614,16 @@ def stream_music(music_id):
         )
 
     logging.info(log_user(session["username"], "Streaming song", song_name=filename))
+    sql = text(
+        """
+        UPDATE song_metadata
+        SET plays = plays + 1
+        WHERE song_id = :song_id
+    """
+    )
+
+    db.session.execute(sql, {"song_id": music_id})
+    db.session.commit()
 
     return send_file(filepath + filename, mimetype="audio/mp3")
     # TODO: Use this for radio feature

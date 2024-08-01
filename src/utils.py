@@ -164,4 +164,7 @@ def is_valid_name(name: str) -> bool:
 
 def songs_appData(songs) -> dict:
     """Parse songs sql request to be put into appData"""
-    return [{"id": song.song_id, "song_name": song.song_name} for song in songs]
+    return [
+        {"id": song.song_id, "song_name": song.song_name, "user_id": song.user_id}
+        for song in songs
+    ]

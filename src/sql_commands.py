@@ -8,11 +8,13 @@ SQL_FILE_UPLOAD = text(
         insert_song AS (
             INSERT INTO songs (
                 song_name,
-                song_description
+                song_description,
+                is_public
             )
             VALUES (
                 :song_name,
-                :song_description
+                :song_description,
+                :is_public
             )
             RETURNING id
         ),

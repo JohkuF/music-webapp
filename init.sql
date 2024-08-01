@@ -33,7 +33,8 @@ CREATE TABLE users (
 CREATE TABLE songs (
     id SERIAL PRIMARY KEY,
     song_name TEXT,
-    song_description TEXT
+    song_description TEXT,
+    is_public BOOLEAN
 );
 
 CREATE TABLE song_metadata (

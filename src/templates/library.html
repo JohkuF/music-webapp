@@ -29,10 +29,10 @@
               role="tabpanel"
               aria-labelledby="list-{{song.id}}-list"
             >
-              {% set song_id = song.id %} {{ song.song_description }}
-              <div
-                class="overflow-auto"
-              >
+              <!-- Show song stats -->
+              {% include "stat-component.html" %} {% set song_id = song.id %} {{
+              song.song_description }}
+              <div class="overflow-auto">
                 {% include "chat-component2.html" %}
               </div>
             </div>
@@ -41,7 +41,7 @@
         </div>
       </div>
       <!-- The popup player -->
-      {% include 'popup-player-component.html' %}
-    {% endblock %} {% endif %}
+      {% include 'popup-player-component.html' %} {% endblock %} {% endif %}
+    </div>
   </body>
 </html>

@@ -24,11 +24,14 @@
           <div class="tab-content" id="nav-tabContent">
             {% for song in songs %}
             <div
-              class="tab-pane fade"
-              id="list-{{song.id}}"
-              role="tabpanel"
-              aria-labelledby="list-{{song.id}}-list"
+            class="tab-pane fade"
+            id="list-{{song.id}}"
+            role="tabpanel"
+            aria-labelledby="list-{{song.id}}-list"
             >
+              <!-- Show song stats -->
+              {% include "stat-component.html" %}
+
               {% set song_id = song.id %} {{ song.song_description }}
               <div
                 class="overflow-auto"
