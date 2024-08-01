@@ -83,7 +83,6 @@ def index():
 @check_login
 def home():
     songs = get_songs(13, is_public=True)
-    print(songs)
     likes = get_user_likes(db, session["user_id"])
 
     # Data to be put into appData
@@ -154,7 +153,9 @@ def settings():
 @app.route("/a", methods=["POST"])
 @check_login
 def action_commands():
-    if request.form["request_type"] == "admin-command" and is_admin(
+    """For handling different actions"""
+
+    if request.form.get("request_type") == "admin-command" and is_admin(
         db, session["user_id"]
     ):
         if "login-down" in request.form:
@@ -168,7 +169,7 @@ def action_commands():
 
         return redirect("/settings")
 
-    elif request.form["request_type"] == "password_reset":
+    elif request.form.get("request_type") == "password_reset":
         # TODO: reset password
         try:
             _new_password = bleach.clean(request.form["password"])
@@ -196,7 +197,7 @@ def action_commands():
 
         return redirect("/settings")
 
-    elif request.form["request_type"] == "account_delete":
+    elif request.form.get("request_type") == "account_delete":
 
         sql = text(
             """
@@ -216,6 +217,40 @@ def action_commands():
         logging.info(log_user(session["username"], "User deleted"))
         del session["username"]
         return redirect("/")
+
+    elif is_public := request.form.get("is_public_song"):
+        is_public = {"true": True, "false": False}.get(is_public, None)
+        assert is_public is not None
+
+        sql = """
+            UPDATE songs s
+            SET is_public = :is_public
+            FROM uploads u
+            WHERE (s.id = :song_id) AND 
+                  (s.id = u.song_id) AND 
+                  (u.user_id = :user_id);
+        """
+
+        db.session.execute(
+            text(sql),
+            {
+                "is_public": is_public,
+                "song_id": request.args["song_id"],
+                "user_id": session["user_id"],
+            },
+        )
+        db.session.commit()
+
+        logging.info(
+            log_user(
+                session["username"],
+                "Changed song rigths",
+                song_id=request.args["song_id"],
+                is_public=is_public,
+            )
+        )
+
+        return jsonify("Form processed successfully", 200)
 
     return redirect("/setting")
 
@@ -244,7 +279,7 @@ def get_songs(
     n: int | None = None, is_public: bool | None = True, user_id: int | None = None
 ):
 
-    sql = """SELECT songs.*, song_metadata.*
+    sql = """SELECT songs.*, song_metadata.*, u.user_id
              FROM songs
              LEFT JOIN song_metadata ON songs.id = song_metadata.song_id
              LEFT JOIN uploads u ON u.song_id = songs.id
@@ -279,6 +314,10 @@ def send(song_id):
     sql = text(
         """INSERT INTO messages (song_id, user_id, upload_time, content)
     SELECT :song_id, id, NOW(), :content FROM users WHERE username = :username;
+
+    UPDATE song_metadata
+    SET comments = comments + 1 
+    WHERE song_id = :song_id;
     """
     )
 
@@ -498,8 +537,6 @@ def upload_file():
 
         file = request.files["file"]
 
-        print(request.form)
-
         username = bleach.clean(session["username"])
         song_name = bleach.clean(request.form["songName"]).strip()
         song_description = bleach.clean(request.form.get("description", None))
@@ -577,6 +614,16 @@ def stream_music(music_id):
         )
 
     logging.info(log_user(session["username"], "Streaming song", song_name=filename))
+    sql = text(
+        """
+        UPDATE song_metadata
+        SET plays = plays + 1
+        WHERE song_id = :song_id
+    """
+    )
+
+    db.session.execute(sql, {"song_id": music_id})
+    db.session.commit()
 
     return send_file(filepath + filename, mimetype="audio/mp3")
     # TODO: Use this for radio feature
