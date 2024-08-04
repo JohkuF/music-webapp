@@ -65,14 +65,16 @@ function getAudioSong(songId, songName) {
 
 function playNextSong() {
   const currentSongId = parseInt(sessionStorage.getItem("songId"));
-  const songsString = sessionStorage.getItem("songIds");
-  const songs = JSON.parse(songsString);
 
-  const nextSongIndex = (songs.indexOf(currentSongId) + 1) % songs.length;
-  const nextSong = songs[nextSongIndex];
+  let nextSongId = currentSongId;
+  const songs = appData.songs;
+  songs.forEach((song, index) => {
+    if (song.id == currentSongId)
+      nextSongId = songs[(index + 1) % songs.length].id;
+  });
 
   // play the next song
-  const svgElement = document.getElementById(`play-${nextSong}`);
+  const svgElement = document.getElementById(`play-${nextSongId}`);
   svgElement.dispatchEvent(new Event("click"));
 }
 
