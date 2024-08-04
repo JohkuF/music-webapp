@@ -1,4 +1,7 @@
 window.onload = function (data) {
+  // To clear songId from previous sessionStorage. Used to make the list song play-button to work
+  sessionStorage.clear();
+
   if (window.appData.likes) {
     // Turn on votes when needed
     var likes = window.appData.likes;

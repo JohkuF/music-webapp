@@ -4,6 +4,22 @@ function toggleIcons(icon) {
   var clickedIconPlay = icon.parentElement.querySelector(".icon-play");
   var clickedIconPause = icon.parentElement.querySelector(".icon-pause");
 
+  // Current song id
+  let = currentSongId = parseInt(clickedIconPlay.id.split("-")[1]);
+  let audio = document.getElementById("audio");
+
+  if (icon.classList.contains("icon-pause")) {
+    audio.pause();
+    clickedIconPlay.classList.toggle("d-none");
+    clickedIconPause.classList.toggle("d-none");
+    return;
+  } else if (parseInt(sessionStorage.songId) === currentSongId) {
+    audio.play();
+    clickedIconPlay.classList.toggle("d-none");
+    clickedIconPause.classList.toggle("d-none");
+    return;
+  }
+
   // switch previous off
   const playIconsArray = Array.from(listPlayIcons); // Convert NodeList to array
 
@@ -24,9 +40,6 @@ function toggleIcons(icon) {
   songName = clickedIconPlay.parentElement.parentElement
     .querySelector("div#songNameContainer")
     .querySelector("p").textContent;
-
-  // Current song id
-  currentSongId = parseInt(clickedIconPlay.id.split("-")[1]);
 
   getAudioSong(currentSongId, songName);
 
@@ -49,7 +62,7 @@ function getAudioSong(songId, songName) {
   songContainer = document.getElementById("musicContainer");
   songLabel = document.getElementById("offcanvasBottomLabel");
 
-  sessionStorage.setItem("songId", songId);
+  sessionStorage.setItem("songId", parseInt(songId));
 
   const songCard = `
       <div id="musicContainer">
@@ -64,7 +77,7 @@ function getAudioSong(songId, songName) {
 }
 
 function playNextSong() {
-  const currentSongId = parseInt(sessionStorage.getItem("songId"));
+  const currentSongId = sessionStorage.getItem("songId");
 
   let nextSongId = currentSongId;
   const songs = appData.songs;
@@ -73,29 +86,10 @@ function playNextSong() {
       nextSongId = songs[(index + 1) % songs.length].id;
   });
 
+  // Initilialize the song messages
+  initMessages(nextSongId);
+
   // play the next song
   const svgElement = document.getElementById(`play-${nextSongId}`);
   svgElement.dispatchEvent(new Event("click"));
 }
-
-function extractNumbersFromIDs() {
-  let playElements = document.querySelectorAll('[id^="play-"]');
-
-  let playNumbers = [];
-
-  playElements.forEach((element) => {
-    let id = element.id;
-    let match = id.match(/^play-(\d+)$/);
-    if (match) {
-      playNumbers.push(Number(match[1]));
-    }
-  });
-
-  // Save the extracted numbers to session storage
-  sessionStorage.setItem("songIds", JSON.stringify(playNumbers));
-  console.log("Extracted numbers saved to sessionStorage:", playNumbers);
-}
-
-window.onload = function () {
-  extractNumbersFromIDs();
-};
