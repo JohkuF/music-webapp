@@ -79,7 +79,7 @@ SQL_FETCH_MESSAGES_GENERAL = text(
 
 
 SQL_FETCH_MESSAGES_ON_SONG = text(
-    """SELECT users.username, messages.song_id, messages.content
+    """SELECT users.username, messages.song_id, messages.content, messages.upload_time
        FROM messages
        JOIN users ON messages.user_id = users.id
        WHERE (:song_id IS NULL OR messages.song_id = :song_id);"""

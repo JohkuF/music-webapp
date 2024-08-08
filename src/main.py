@@ -267,6 +267,7 @@ def get_messages(song_id=None):
             "username": message.username,
             "song_id": message.song_id,
             "content": message.content,
+            "timestamp": message.upload_time
         }
         for message in messages
     ]
@@ -338,14 +339,14 @@ def send(song_id):
     for message in messages:
         content = bleach.clean(message.content)
         username = bleach.clean(message.username)
+        timestamp = bleach.clean(message.upload_time.strftime('%a, %d %b %Y %H:%M:%S GMT'))
         response += f"""
             <div class="card mb-4" id="messages-{song_id}">
               <div class="card-body">
                 <p>{content}</p>
                 <div class="d-flex justify-content-between">
-                  <div class="d-flex flex-row align-items-center">
                     <p class="small mb-0 ms-2">{username}</p>
-                  </div>
+                    <p class="small mb-0 ms-2 text-secondary">{timestamp}</p>
                 </div>
               </div>
             </div>

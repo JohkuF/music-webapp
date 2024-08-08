@@ -31,15 +31,15 @@ async function initMessages(id) {
     messages.reverse().forEach((message) => {
       username = sanitize(message.username);
       content = sanitize(message.content);
+      timestamp = sanitize(message.timestamp)
 
       const messageCard = `
           <div class="card mb-4" id="messages-${id}-${id_extra}">
             <div class="card-body">
               <p>${content}</p>
               <div class="d-flex justify-content-between">
-                <div class="d-flex flex-row align-items-center">
                 <p class="small mb-0 ms-2">${username}</p>
-                </div>
+                <p class="small mb-0 ms-2 text-secondary">${timestamp}</p>
               </div>
             </div>
           </div>`;
