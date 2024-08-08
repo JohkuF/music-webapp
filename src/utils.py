@@ -9,6 +9,12 @@ from .schemas import VoteSchema
 from .myenums import VoteType
 
 
+def is_song_deleted(db, song_id: int) -> bool:
+    sql = text("SELECT song_name FROM songs WHERE id = :song_id")
+    result = db.session.execute(sql, {"song_id": song_id}).fetchone()
+    return True if "[deleted]" in result else False
+
+
 def setup_login(IS_DOCKER):
     log_path = "/logs/music-webapp.log" if IS_DOCKER else "logi.log"
     file_handler = logging.FileHandler(log_path)

@@ -18,6 +18,7 @@ from .utils import (
     check_login,
     find_new_filename,
     is_admin,
+    is_song_deleted,
     is_valid_name,
     log_user,
     set_signup_state,
@@ -150,10 +151,37 @@ def settings():
     return render_template("settings.html", is_admin=admin)
 
 
-@app.route("/a", methods=["POST"])
+@app.route("/a", methods=["POST", "DELETE"])
 @check_login
 def action_commands():
     """For handling different actions"""
+    if request.method == "DELETE" and "delete_song" in request.args:
+        """To handle song deletion requests"""
+        try:
+            # TODO: logging
+            song_id = int(bleach.clean(request.args.get("delete_song")))
+            assert isinstance(song_id, int)
+
+            sql = text(
+                """
+                UPDATE songs
+                SET song_name = '[deleted]', song_description = '[deleted]'
+                WHERE id = :song_id AND id IN (
+                    SELECT song_id
+                    FROM uploads
+                    WHERE user_id = :user_id
+                );
+            """
+            )
+
+            db.session.execute(sql, {"user_id": session["user_id"], "song_id": song_id})
+            db.session.commit()
+
+            return jsonify("Song deleted succesfully", 200)
+
+        except Exception as e:
+            logging.error(log_user(session["username"], e))
+            return jsonify("Something went wrong", 500)
 
     if request.form.get("request_type") == "admin-command" and is_admin(
         db, session["user_id"]
@@ -267,7 +295,7 @@ def get_messages(song_id=None):
             "username": message.username,
             "song_id": message.song_id,
             "content": message.content,
-            "timestamp": message.upload_time
+            "timestamp": message.upload_time,
         }
         for message in messages
     ]
@@ -285,7 +313,8 @@ def get_songs(
              LEFT JOIN song_metadata ON songs.id = song_metadata.song_id
              LEFT JOIN uploads u ON u.song_id = songs.id
              WHERE (:user_id IS NULL OR u.user_id = :user_id)
-               AND (:is_public IS NULL OR songs.is_public = :is_public)
+             AND (:is_public IS NULL OR songs.is_public = :is_public)
+             AND (songs.song_name <> '[deleted]')
              ORDER BY (song_metadata.upvote - song_metadata.downvote) DESC
     """
     params = {"user_id": user_id, "is_public": is_public}
@@ -339,7 +368,9 @@ def send(song_id):
     for message in messages:
         content = bleach.clean(message.content)
         username = bleach.clean(message.username)
-        timestamp = bleach.clean(message.upload_time.strftime('%a, %d %b %Y %H:%M:%S GMT'))
+        timestamp = bleach.clean(
+            message.upload_time.strftime("%a, %d %b %Y %H:%M:%S GMT")
+        )
         response += f"""
             <div class="card mb-4" id="messages-{song_id}">
               <div class="card-body">
@@ -588,6 +619,10 @@ def upload_file():
 @app.route("/stream/<int:music_id>")
 @check_login
 def stream_music(music_id):
+
+    # Check if song is deleted
+    if is_song_deleted(db, music_id):
+        return jsonify("Song is deleted")
 
     sql = text(
         """

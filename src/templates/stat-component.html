@@ -4,17 +4,17 @@
     }}
   </p>
   {% if song.user_id == session.user_id %}
-
-  <form id="publicForm" action="/a?song_id={{song.song_id}}" method="POST">
-    <input
-      type="hidden"
-      name="is_public_song"
-      value="none"
-      id="hiddenIsPublic"
-    />
-    <div class="form-check form-switch">
-      <!-- prettier-ignore -->
+  <div class="d-flex flex-row mb-3">
+    <form id="publicForm" action="/a?song_id={{song.song_id}}" method="POST" class="me-4">
       <input
+        type="hidden"
+        name="is_public_song"
+        value="none"
+        id="hiddenIsPublic"
+      />
+      <div class="form-check form-switch">
+        <!-- prettier-ignore -->
+        <input
         class="form-check-input"
         type="checkbox"
         role="switch"
@@ -23,11 +23,26 @@
         onchange="sendChange()"
         {% if song.is_public %} checked {% endif %} 
       />
-      <label class="form-check-label" for="flexSwitchCheckChecked"
-        >Is public</label
-      >
-    </div>
-  </form>
+        <label class="form-check-label" for="flexSwitchCheckChecked"
+          >Is public</label
+        >
+      </div>
+    </form>
+    <button
+      class="btn btn-outline-danger"
+      hx-confirm="You want to delete {{song.song_name}}?"
+      hx-delete="/a?delete_song={{song.song_id}}"
+      hx-swap="delete"
+      hx
+      style="
+        --bs-btn-padding-y: 0.25rem;
+        --bs-btn-padding-x: 0.5rem;
+        --bs-btn-font-size: 0.60rem;
+      "
+    >
+      Delete song
+    </button>
+  </div>
   <script>
     function sendChange() {
       const form = document.getElementById("publicForm");
@@ -51,6 +66,5 @@
         });
     }
   </script>
-
   {% endif %}
 </div>
