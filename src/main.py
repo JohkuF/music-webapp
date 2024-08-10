@@ -1,4 +1,3 @@
-# TODO: Database add max char size
 import os
 import bleach
 import json
@@ -6,7 +5,6 @@ import logging
 from sqlalchemy import text
 from dotenv import load_dotenv
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy.dialects import postgresql
 from werkzeug.utils import secure_filename
 from flask import Flask, Response, send_file
 from flask import render_template, request, session, redirect, flash, url_for, jsonify
@@ -32,10 +30,7 @@ from .utils import (
 )
 from .sql_commands import (
     SQL_FILE_UPLOAD,
-    SQL_SEND_MESSAGE_GENERAL,
-    SQL_FETCH_MESSAGES_GENERAL,
     SQL_FETCH_MESSAGES_ON_SONG,
-    SQL_INSERT_VOTE,
 )
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
@@ -44,7 +39,6 @@ log.setLevel(logging.ERROR)
 
 load_dotenv(".env")
 app.secret_key = os.getenv("SECRET_KEY")
-
 
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
 POSTGRES_USER = os.getenv("POSTGRES_USER")
@@ -222,7 +216,6 @@ def action_commands():
 
         except Exception as e:
             logging.error(log_user(session["username"], e))
-
         return redirect("/settings")
 
     elif request.form.get("request_type") == "account_delete":
@@ -279,18 +272,18 @@ def action_commands():
         )
 
         return jsonify("Form processed successfully", 200)
-
     return redirect("/setting")
 
 
 @app.route("/messages", defaults={"song_id": None}, strict_slashes=False)
 @app.route("/messages/<path:song_id>")
+@check_login
 def get_messages(song_id=None):
 
     result = db.session.execute(SQL_FETCH_MESSAGES_ON_SONG, {"song_id": song_id})
 
     messages = result.fetchall()
-    messages_list = [
+    return [
         {
             "username": message.username,
             "song_id": message.song_id,
@@ -300,14 +293,10 @@ def get_messages(song_id=None):
         for message in messages
     ]
 
-    return messages_list
 
-
-@app.route("/songs", methods=["post"])
 def get_songs(
     n: int | None = None, is_public: bool | None = True, user_id: int | None = None
 ):
-
     sql = """SELECT songs.*, song_metadata.*, u.user_id
              FROM songs
              LEFT JOIN song_metadata ON songs.id = song_metadata.song_id
@@ -328,12 +317,8 @@ def get_songs(
     return songs
 
 
-@app.route("/new")
-def new():
-    return render_template("new.html")
-
-
 @app.route("/send/<path:song_id>", methods=["POST"])
+@check_login
 def send(song_id):
     assert song_id == request.view_args["song_id"]
     song_id = bleach.clean(song_id)
@@ -382,7 +367,6 @@ def send(song_id):
               </div>
             </div>
         """
-
     return response
 
 
@@ -409,10 +393,8 @@ def login():
     return redirect("/home")
 
 
-# TODO:TODO:TODO add is_public to the query
-
-
 @app.route("/logout", methods=["POST"])
+@check_login
 def logout():
     logging.info(log_user(session["username"], "logout"))
     del session["username"]
@@ -451,13 +433,6 @@ def signup():
     logging.info(log_user(username, "signup"))
 
     return redirect("/")
-
-
-# @app.route("/q", methods=["POST"])
-# @check_login
-# def query_info():
-#
-#    return json.dumps({"success": True}), 200, {"ContentType": "application/json"}
 
 
 @app.route("/v", methods=["POST"])
@@ -547,9 +522,6 @@ def process_voting(voteModel: VoteSchema) -> str:
 
 def allowed_file(filetype):
     return filetype in [ftype.value for ftype in AcceptedFileTypes]
-    # mime = magic.Magic(mime=True)
-    # file_type = mime.from_buffer(filename.read())
-    # return file_type in [ftype.value for ftype in AcceptedFileTypes]
 
 
 @app.route("/upload/", methods=["GET", "POST"])
@@ -662,32 +634,6 @@ def stream_music(music_id):
     db.session.commit()
 
     return send_file(filepath + filename, mimetype="audio/mp3")
-    # TODO: Use this for radio feature
-    """
-    # @stream_with_context
-    def generate():
-        count = 1
-
-        with open(filepath + filename, "rb") as fwaw:
-            data = fwaw.read(1024 // 2)
-            while data:
-                yield data
-                data = fwaw.read(1024 // 2)
-
-
-    response = Response(generate(), mimetype="audio/mp3")
-    response.headers["X-Accel-Buffering"] = "no"
-    # response.headers["X-Accel-Buffering"] = "yes"
-    response.iter_chunk_size = 1024 // 2  # * 1024  # 1MB chunks
-
-    # Check if the client supports range requests
-    if "Range" in request.headers:
-        response.status_code = 206  # Partial Content
-    else:
-        response.status_code = 200  # OK
-
-    return response
-    """
 
 
 if __name__ == "__main__":
