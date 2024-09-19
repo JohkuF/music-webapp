@@ -1,7 +1,8 @@
 from sqlalchemy import text
 
 # TODO maybe songs_id_seq could go out of sync - maybe use id from first insert
-SQL_FILE_UPLOAD = text("""
+SQL_FILE_UPLOAD = text(
+    """
 WITH user_data AS (
         SELECT id FROM users WHERE username = :username
     ),
@@ -52,14 +53,16 @@ WITH user_data AS (
 """
 )
 
-SQL_FETCH_MESSAGES_GENERAL = text("""
+SQL_FETCH_MESSAGES_GENERAL = text(
+    """
 SELECT users.username, messages.content
 FROM messages
 JOIN users ON messages.user_id = users.id;"""
 )
 
 
-SQL_FETCH_MESSAGES_ON_SONG = text("""
+SQL_FETCH_MESSAGES_ON_SONG = text(
+    """
 SELECT users.username, messages.song_id, messages.content, messages.upload_time
 FROM messages
 JOIN users ON messages.user_id = users.id
@@ -67,14 +70,16 @@ WHERE (:song_id IS NULL OR messages.song_id = :song_id);
 """
 )
 
-SQL_UPDATE_SONG_UPVOTE = text("""
+SQL_UPDATE_SONG_UPVOTE = text(
+    """
 UPDATE song_metadata 
 SET upvote = upvote + 1
 WHERE song_id = :song_id;
 """
 )
 
-SQL_INSERT_VOTE = text("""
+SQL_INSERT_VOTE = text(
+    """
 WITH user_data AS (
     SELECT id FROM users WHERE username = :username
 )
@@ -93,7 +98,8 @@ SELECT
 )
 
 
-SQL_DELETE_SONG = text("""
+SQL_DELETE_SONG = text(
+    """
 UPDATE songs
 SET song_name = '[deleted]', song_description = '[deleted]'
 WHERE id = :song_id AND id IN (
@@ -101,48 +107,58 @@ WHERE id = :song_id AND id IN (
     FROM uploads
     WHERE user_id = :user_id
 );
-""")
+"""
+)
 
-SQL_UPDATE_PASSWORD = text("""
+SQL_UPDATE_PASSWORD = text(
+    """
 UPDATE users
 SET password=:hashed_password
 WHERE username=:username AND id=:user_id;
 """
 )
 
-SQL_DELETE_ACCOUNT = text("""
+SQL_DELETE_ACCOUNT = text(
+    """
 UPDATE users
 SET username = '[deleted]',
     password = '[deleted]'
 WHERE username = :username AND id = :user_id;
-""")
+"""
+)
 
-SQL_CHANGE_PUBLICITY = text("""
+SQL_CHANGE_PUBLICITY = text(
+    """
 UPDATE songs s
 SET is_public = :is_public
 FROM uploads u
 WHERE (s.id = :song_id) AND 
       (s.id = u.song_id) AND 
       (u.user_id = :user_id);
-""")
+"""
+)
 
 SQL_LOGIN = text("SELECT id, password FROM users WHERE username=:username")
 
 SQL_USER_COUNT = text("SELECT COUNT(*) AS row_count FROM users;")
 
-SQL_CHECK_USERNAME_EXISTS = text("SELECT id, password FROM users WHERE username=:username")
+SQL_CHECK_USERNAME_EXISTS = text(
+    "SELECT id, password FROM users WHERE username=:username"
+)
 
-SQL_CREATE_NEW_USER = text("INSERT INTO users (username, password, role) VALUES (:username, :password, :role)")
+SQL_CREATE_NEW_USER = text(
+    "INSERT INTO users (username, password, role) VALUES (:username, :password, :role)"
+)
 
 SQL_GET_SONG_FILEPATH = text(
-"""
+    """
 SELECT filepath, filename FROM uploads
 WHERE song_id = :song_id;
 """
 )
 
 SQL_UPDATE_SONG_METADATA = text(
-"""
+    """
 UPDATE song_metadata
 SET plays = plays + 1
 WHERE song_id = :song_id
@@ -163,14 +179,16 @@ AND (songs.song_name <> '[deleted]')
 ORDER BY (song_metadata.upvote - song_metadata.downvote) DESC
 """
 
-SQL_SEND_MESSAGE = text("""
+SQL_SEND_MESSAGE = text(
+    """
 INSERT INTO messages (song_id, user_id, upload_time, content)
 SELECT :song_id, id, NOW(), :content FROM users WHERE username = :username;
 
 UPDATE song_metadata
 SET comments = comments + 1 
 WHERE song_id = :song_id;
-""")
+"""
+)
 
 # ---------- VOTE PROCESSING ----------
 

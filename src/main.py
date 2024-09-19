@@ -13,39 +13,39 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from .schemas import VoteSchema
 from .myenums import VoteType, AcceptedFileTypes
 from .utils import (
-    check_login,
     find_new_filename,
-    is_admin,
-    is_song_deleted,
-    is_valid_name,
-    log_user,
     set_signup_state,
     set_upload_state,
     get_signup_state,
     get_upload_state,
+    is_song_deleted,
     get_user_likes,
-    check_vote,
+    is_valid_name,
     setup_logging,
     songs_appData,
+    check_login,
+    check_vote,
+    is_admin,
+    log_user,
 )
 from .sql_commands import (
-    SQL_CHANGE_PUBLICITY,
-    SQL_CHECK_USERNAME_EXISTS,
-    SQL_CREATE_NEW_USER,
-    SQL_DELETE_ACCOUNT,
-    SQL_DELETE_SONG,
-    SQL_FILE_UPLOAD,
-    SQL_FETCH_MESSAGES_ON_SONG,
-    SQL_GET_SONG_FILEPATH,
-    SQL_GET_SONGS_DEFAULT,
-    SQL_LOGIN,
-    SQL_SEND_MESSAGE,
-    SQL_UPDATE_PASSWORD,
-    SQL_UPDATE_SONG_METADATA,
-    SQL_USER_COUNT,
-    SQL_VOTE_INSERT_NEW_VOTE,
     SQL_VOTE_UPDATE_EXISTING_VOTE,
     SQL_VOTE_UPDATE_SONG_METADATA,
+    SQL_FETCH_MESSAGES_ON_SONG,
+    SQL_CHECK_USERNAME_EXISTS,
+    SQL_VOTE_INSERT_NEW_VOTE,
+    SQL_UPDATE_SONG_METADATA,
+    SQL_GET_SONG_FILEPATH,
+    SQL_GET_SONGS_DEFAULT,
+    SQL_CHANGE_PUBLICITY,
+    SQL_CREATE_NEW_USER,
+    SQL_UPDATE_PASSWORD,
+    SQL_DELETE_ACCOUNT,
+    SQL_SEND_MESSAGE,
+    SQL_DELETE_SONG,
+    SQL_FILE_UPLOAD,
+    SQL_USER_COUNT,
+    SQL_LOGIN,
 )
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
@@ -290,6 +290,7 @@ def get_messages(song_id=None):
         for message in messages
     ]
 
+
 def get_songs(
     n: int | None = None, is_public: bool | None = True, user_id: int | None = None
 ):
@@ -364,12 +365,14 @@ def login():
         logging.info(log_user(username, "login"))
     return redirect("/home")
 
+
 @app.route("/logout", methods=["POST"])
 @check_login
 def logout():
     logging.info(log_user(session["username"], "logout"))
     del session["username"]
     return redirect("/")
+
 
 @app.route("/signup", methods=["POST"])
 def signup():
@@ -400,7 +403,9 @@ def signup():
             return "User already exists"
 
         sql = SQL_CREATE_NEW_USER
-        db.session.execute(sql, {"username": username, "password": hash_pass, "role": role})
+        db.session.execute(
+            sql, {"username": username, "password": hash_pass, "role": role}
+        )
         db.session.commit()
         logging.info(log_user(username, "signup"))
 
@@ -408,6 +413,7 @@ def signup():
         logging.error(log_user(session["username"], e))
         return jsonify("Something went wrong", 500)
     return redirect("/")
+
 
 @app.route("/v", methods=["POST"])
 @check_login
@@ -449,9 +455,7 @@ def process_voting(voteModel: VoteSchema) -> str:
             prev_vote_type=previous_vote.value, vote_type=vote_type
         )
 
-    sql += SQL_VOTE_UPDATE_SONG_METADATA.format(
-        vote_type=vote_type
-    )
+    sql += SQL_VOTE_UPDATE_SONG_METADATA.format(vote_type=vote_type)
 
     params = {
         "user_id": user_id,
@@ -569,6 +573,7 @@ def stream_music(music_id):
     db.session.execute(sql, {"song_id": music_id})
     db.session.commit()
     return send_file(filepath + filename, mimetype="audio/mp3")
+
 
 if __name__ == "__main__":
     app.debug = True
