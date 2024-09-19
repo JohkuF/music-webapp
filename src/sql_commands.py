@@ -110,3 +110,37 @@ SELECT
     :vote_tfield, field2ype;
     """
 )
+
+
+SQL_DELETE_SONG = text("""
+UPDATE songs
+SET song_name = '[deleted]', song_description = '[deleted]'
+WHERE id = :song_id AND id IN (
+    SELECT song_id
+    FROM uploads
+    WHERE user_id = :user_id
+);
+""")
+
+SQL_UPDATE_PASSWORD = text("""
+UPDATE users
+SET password=:hashed_password
+WHERE username=:username AND id=:user_id;
+"""
+)
+
+SQL_DELETE_ACCOUNT = text("""
+UPDATE users
+SET username = '[deleted]',
+    password = '[deleted]'
+WHERE username = :username AND id = :user_id;
+""")
+
+SQL_CHANGE_PUBLICITY = text("""
+    UPDATE songs s
+    SET is_public = :is_public
+    FROM uploads u
+    WHERE (s.id = :song_id) AND 
+            (s.id = u.song_id) AND 
+            (u.user_id = :user_id);
+""")

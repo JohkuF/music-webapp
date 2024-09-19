@@ -29,8 +29,12 @@ from .utils import (
     songs_appData,
 )
 from .sql_commands import (
+    SQL_CHANGE_PUBLICITY,
+    SQL_DELETE_ACCOUNT,
+    SQL_DELETE_SONG,
     SQL_FILE_UPLOAD,
     SQL_FETCH_MESSAGES_ON_SONG,
+    SQL_UPDATE_PASSWORD,
 )
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
@@ -79,11 +83,9 @@ def index():
 def home():
     songs = get_songs(13, is_public=True)
     likes = get_user_likes(db, session["user_id"])
-
     # Data to be put into appData
     appData_songs = songs_appData(songs)
     messages = get_messages()
-
     return render_template(
         "home.html",
         songs=songs,
@@ -98,11 +100,9 @@ def home():
 def explore():
     songs = get_songs()
     likes = get_user_likes(db, session["user_id"])
-
     # Data to be put into appData
     appData_songs = songs_appData(songs)
     messages = get_messages()
-
     return render_template(
         "explore.html",
         songs=songs,
@@ -117,11 +117,9 @@ def explore():
 def library():
     songs = get_songs(user_id=session["user_id"], is_public=None)
     likes = get_user_likes(db, session["user_id"])
-
     # Data to be put into appData
     appData_songs = songs_appData(songs)
     messages = get_messages()
-
     return render_template(
         "library.html",
         songs=songs,
@@ -149,34 +147,17 @@ def settings():
 @check_login
 def action_commands():
     """For handling different actions"""
+
+    # ---------- SONG DELETION ----------
     if request.method == "DELETE" and "delete_song" in request.args:
-        """To handle song deletion requests"""
         try:
-            # TODO: logging
             song_id = int(bleach.clean(request.args.get("delete_song")))
-            assert isinstance(song_id, int)
-
-            sql = text(
-                """
-                UPDATE songs
-                SET song_name = '[deleted]', song_description = '[deleted]'
-                WHERE id = :song_id AND id IN (
-                    SELECT song_id
-                    FROM uploads
-                    WHERE user_id = :user_id
-                );
-            """
-            )
-
-            db.session.execute(sql, {"user_id": session["user_id"], "song_id": song_id})
-            db.session.commit()
-
-            return jsonify("Song deleted succesfully", 200)
-
+            delete_song_by_id(song_id)
         except Exception as e:
             logging.error(log_user(session["username"], e))
             return jsonify("Something went wrong", 500)
 
+    # ---------- ADMIN CONTROLS ----------
     if request.form.get("request_type") == "admin-command" and is_admin(
         db, session["user_id"]
     ):
@@ -191,88 +172,98 @@ def action_commands():
 
         return redirect("/settings")
 
+    # ---------- PASSWORD RESET ----------
     elif request.form.get("request_type") == "password_reset":
-        # TODO: reset password
         try:
             _new_password = bleach.clean(request.form["password"])
-            hashed_password = generate_password_hash(_new_password)
-            sql = text(
-                """
-                UPDATE users
-                SET password=:hashed_password
-                WHERE username=:username AND id=:user_id"""
-            )
-            db.session.execute(
-                sql,
-                {
-                    "hashed_password": hashed_password,
-                    "username": session["username"],
-                    "user_id": session["user_id"],
-                },
-            )
-            db.session.commit()
+            # output not used because flask renders json if used
+            update_user_password(session["user_id"], session["username"], _new_password)
             flash("Password updated", "success")
             logging.info(log_user(session["username"], "Changed password"))
-
+            return jsonify("Password changed succesfully", 200)
         except Exception as e:
             logging.error(log_user(session["username"], e))
         return redirect("/settings")
 
+    # ---------- ACCOUNT DELETION ----------
     elif request.form.get("request_type") == "account_delete":
+        try:
+            return delete_user_account(session["user_id"], session["username"])
+        except Exception as e:
+            logging.error(log_user(session["username"], e))
+        return redirect("/settings")
 
-        sql = text(
-            """
-        UPDATE users
-        SET username = '[deleted]',
-            password = '[deleted]'
-        WHERE username = :username AND id = :user_id
-        """
-        )
-
-        db.session.execute(
-            sql, {"username": session["username"], "user_id": session["user_id"]}
-        )
-
-        db.session.commit()
-
-        logging.info(log_user(session["username"], "User deleted"))
-        del session["username"]
-        return redirect("/")
-
+    # ---------- SONG PUBLIC/PRIVATE CHANGE ----------
     elif is_public := request.form.get("is_public_song"):
         is_public = {"true": True, "false": False}.get(is_public, None)
         assert is_public is not None
-
-        sql = """
-            UPDATE songs s
-            SET is_public = :is_public
-            FROM uploads u
-            WHERE (s.id = :song_id) AND 
-                  (s.id = u.song_id) AND 
-                  (u.user_id = :user_id);
-        """
-
-        db.session.execute(
-            text(sql),
-            {
-                "is_public": is_public,
-                "song_id": request.args["song_id"],
-                "user_id": session["user_id"],
-            },
-        )
-        db.session.commit()
-
-        logging.info(
-            log_user(
-                session["username"],
-                "Changed song rigths",
-                song_id=request.args["song_id"],
-                is_public=is_public,
+        try:
+            return change_song_publicity(
+                request.args["song_id"], session["user_id"], is_public
             )
-        )
-
-        return jsonify("Form processed successfully", 200)
+        except Exception as e:
+            logging.error(log_user(session["username"], e))
+            return jsonify("Something went wrong", 500)
     return redirect("/setting")
+
+
+# ********** ACTION HELPER FUNCTIONS **********
+def delete_song_by_id(song_id) -> Response:
+    assert isinstance(song_id, int)
+    sql = SQL_DELETE_SONG
+    db.session.execute(sql, {"user_id": session["user_id"], "song_id": song_id})
+    db.session.commit()
+    logging.info(log_user(session["username"], "Deleted song %s" % song_id))
+    return jsonify("Song deleted succesfully", 200)
+
+
+def update_user_password(user_id, username, _new_password) -> Response:
+    hashed_password = generate_password_hash(_new_password)
+    sql = SQL_UPDATE_PASSWORD
+    db.session.execute(
+        sql,
+        {
+            "hashed_password": hashed_password,
+            "username": username,
+            "user_id": user_id,
+        },
+    )
+    db.session.commit()
+    return jsonify("Password changed succesfully", 200)
+
+
+def delete_user_account(user_id: int, username: str) -> Response:
+    sql = SQL_DELETE_ACCOUNT
+    db.session.execute(sql, {"username": username, "user_id": user_id})
+    db.session.commit()
+    logging.info(log_user(session["username"], "User deleted"))
+    del session["username"]
+    return redirect("/")
+
+
+def change_song_publicity(song_id, user_id, is_public) -> Response:
+    sql = SQL_CHANGE_PUBLICITY
+    db.session.execute(
+        sql,
+        {
+            "is_public": is_public,
+            "song_id": song_id,
+            "user_id": user_id,
+        },
+    )
+    db.session.commit()
+    logging.info(
+        log_user(
+            session["username"],
+            "Changed song publicity to %s" % is_public,
+            song_id=song_id,
+            is_public=is_public,
+        )
+    )
+    return jsonify("Form processed successfully", 200)
+
+
+# ********** ACTION HELPER FUNCTIONS **********
 
 
 @app.route("/messages", defaults={"song_id": None}, strict_slashes=False)
@@ -415,6 +406,11 @@ def signup():
     _password = bleach.clean(request.form["password"])
     hash_pass = generate_password_hash(_password)
 
+    # Check if first user - for admin priv
+    result = db.session.execute(text("SELECT COUNT(*) AS row_count FROM users;"))
+    row_count = result.fetchone()[0]
+    role = "admin" if row_count == 0 else "user"
+
     # Check if username is taken
     sql = text("SELECT id, password FROM users WHERE username=:username")
     result = db.session.execute(sql, {"username": username})
@@ -424,10 +420,10 @@ def signup():
         return "User already exists"
 
     sql = text(
-        "INSERT INTO users (username, password, role) VALUES (:username, :password, 'user')"
+        "INSERT INTO users (username, password, role) VALUES (:username, :password, :role)"
     )
 
-    db.session.execute(sql, {"username": username, "password": hash_pass})
+    db.session.execute(sql, {"username": username, "password": hash_pass, "role": role})
     db.session.commit()
 
     logging.info(log_user(username, "signup"))
