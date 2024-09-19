@@ -8,11 +8,6 @@
 
 CREATE ROLE postgres WITH SUPERUSER CREATEDB CREATEROLE LOGIN PASSWORD '${POSTGRES_SUPERUSER_PASSWORD}';
 
---CREATE ROLE app_user WITH LOGIN PASSWORD 'TEMPPASS';
---GRANT ALL PRIVILEGES ON DATABASE app TO app_user;
-
---CREATE DATABASE app;
-
 -- Connect to the app database
 \c musicApp;
 
@@ -39,7 +34,6 @@ CREATE TABLE songs (
 
 CREATE TABLE song_metadata (
     song_id INT REFERENCES songs(id), 
-    playlists INT,
     comments INT,
     plays INT,
     upvote INT,
@@ -55,19 +49,6 @@ CREATE TABLE messages (
     user_id INT REFERENCES users(id),
     upload_time TIMESTAMP,
     content TEXT
-);
-
-CREATE TABLE playlists (
-    id SERIAL PRIMARY KEY,
-    user_id INT REFERENCES users(id),
-    playlist_name TEXT,
-    created_at TIMESTAMP
-);
-
-CREATE TABLE playlist_song (
-    playlist_id INT REFERENCES playlists(id),
-    song_id INT REFERENCES songs(id),
-    PRIMARY KEY (playlist_id, song_id)
 );
 
 CREATE TABLE likes (
