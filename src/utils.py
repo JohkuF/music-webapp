@@ -3,7 +3,7 @@ import json
 import logging
 import functools
 from sqlalchemy import text
-from flask import session, redirect
+from flask import abort, request, session, redirect
 
 from .schemas import VoteSchema
 from .myenums import VoteType
@@ -59,6 +59,16 @@ def check_login(func):
 
     return wrapper
 
+def check_csrf_token(func):
+    # ---------- CSRF TOKEN CHECK ----------
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        if request.method == "POST" and session["csrf_token"] != request.form["csrf_token"]:
+            logging.error("CSRF FAILED")
+            abort(403)
+            return redirect("/settings")
+        return func(*args, **kwargs)
+    return wrapper
 
 def find_new_filename(path: str, filename: str) -> str:
     filename, end = os.path.splitext(filename)

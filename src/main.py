@@ -14,6 +14,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from .schemas import VoteSchema
 from .myenums import VoteType, AcceptedFileTypes
 from .utils import (
+    check_csrf_token,
     find_new_filename,
     set_signup_state,
     set_upload_state,
@@ -157,15 +158,9 @@ def settings():
 
 @app.route("/a", methods=["POST", "DELETE"])
 @check_login
+@check_csrf_token
 def action_commands():
     """For handling different actions"""
-    print(session['csrf_token'], request.args, request.form)
-
-    # ---------- CSRF TOKEN CHECK ----------
-    if session["csrf_token"] != request.form["csrf_token"]:
-        logging.error("CSRF FAILED")
-        abort(403)
-        return redirect("/settings")
 
     # ---------- SONG DELETION ----------
     if request.form.get("request_type") == "delete_song":
@@ -358,6 +353,7 @@ def send(song_id):
 
 
 @app.route("/login", methods=["POST"])
+@check_csrf_token
 def login():
     username = bleach.clean(request.form["username"])
     password = bleach.clean(request.form["password"])
@@ -379,6 +375,7 @@ def login():
 
 @app.route("/logout", methods=["POST"])
 @check_login
+@check_csrf_token
 def logout():
     logging.info(log_user(session["username"], "logout"))
     del session["username"]
@@ -494,6 +491,7 @@ def allowed_file(filetype):
 
 @app.route("/upload/", methods=["GET", "POST"])
 @check_login
+@check_csrf_token
 def upload_file():
 
     if request.method == "POST":
