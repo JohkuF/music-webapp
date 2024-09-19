@@ -2,6 +2,7 @@
     <div class="card card-body">
       <p>Sign up</p>
       <form action="/signup" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
         <div class="mb-3">
           <label for="username2" class="form-label">Username</label>
           <input

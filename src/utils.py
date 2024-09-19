@@ -143,7 +143,6 @@ def check_vote(db, voteModel: VoteSchema) -> VoteType | bool:
     try:
         return VoteType(res[0])
     except:
-        # TODO: log error
         return VoteType.NONEVOTE
 
 

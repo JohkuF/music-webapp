@@ -6,6 +6,7 @@
   {% if song.user_id == session.user_id %}
   <div class="d-flex flex-row mb-3">
     <form id="publicForm" action="/a?song_id={{song.song_id}}" method="POST" class="me-4">
+      <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
       <input
         type="hidden"
         name="is_public_song"
@@ -28,20 +29,23 @@
         >
       </div>
     </form>
-    <button
-      class="btn btn-outline-danger"
-      hx-confirm="You want to delete {{song.song_name}}?"
-      hx-delete="/a?delete_song={{song.song_id}}"
-      hx-swap="delete"
-      hx
-      style="
-        --bs-btn-padding-y: 0.25rem;
-        --bs-btn-padding-x: 0.5rem;
-        --bs-btn-font-size: 0.60rem;
-      "
-    >
-      Delete song
-    </button>
+    <form action="/a" method="POST" style="display:inline;">
+      <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
+      <input type="hidden" name="delete_song" value="{{song.song_id}}">
+      <input type="hidden" name="request_type" value="delete_song" />
+      <button
+        type="submit"
+        class="btn btn-outline-danger"
+        onclick="return confirm('You want to delete {{song.song_name}}?')"
+        style="
+          --bs-btn-padding-y: 0.25rem;
+          --bs-btn-padding-x: 0.5rem;
+          --bs-btn-font-size: 0.60rem;
+        "
+      >
+        Delete song
+      </button>
+    </form>
   </div>
   <script>
     function sendChange() {

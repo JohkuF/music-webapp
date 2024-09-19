@@ -2,33 +2,29 @@
   <div class="col-md-12 col-lg-8">
     <div class="card shadow-0 border">
       <div class="card-body p-4">
-        <form action="/send" method="POST">
+        <form
+          id="commentForm"
+          hx-post="/send/{{song_id}}"
+          hx-target="#messagesContainer-{{song_id}}"
+        >
+        <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
           <div class="form-outline mb-4 d-flex align-items-center">
             <input
+              required
+              id="commentInput"
               name="content"
               style="width: 80%"
               type="text"
               class="form-control me-2"
               placeholder="Type comment..."
             />
+
             <button class="btn btn-primary btn-block" style="width: 20%">
               Send
             </button>
           </div>
         </form>
-        {% for message in messages|reverse %}
-        <div class="card mb-4">
-          <div class="card-body">
-            <p>{{ message.content }}</p>
-
-            <div class="d-flex justify-content-between">
-              <div class="d-flex flex-row align-items-center">
-                <p class="small mb-0 ms-2">{{ message.username }}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-        {% endfor %}
+        <div id="messagesContainer-{{song_id}}"></div>
       </div>
     </div>
   </div>

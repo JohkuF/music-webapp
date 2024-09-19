@@ -22,6 +22,7 @@
         <div>
           <p>Singup status: {{ is_signup }}</p>
           <form action="/a" method="post">
+            <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
             <button
               type="submit"
               name="login-down"
@@ -42,6 +43,7 @@
         <div>
           <p>Upload status: {{ is_upload }}</p>
           <form action="/a" method="post">
+            <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
             <button
               type="submit"
               name="upload-down"
@@ -73,6 +75,7 @@
         {% endwith %}
         <div class="row">
           <form action="/a" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
             <div class="mb-3">
               <input
                 required
@@ -90,6 +93,7 @@
         <div class="row p-3">
           <p>Delete account: (does not delete songs)</p>
           <form action="/a" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
             <input type="hidden" name="request_type" value="account_delete" />
             <button type="submit" class="btn btn-outline-danger">Delete account</button>
           </form>

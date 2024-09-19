@@ -1,4 +1,5 @@
 import os
+import secrets
 import bleach
 import json
 import logging
@@ -6,7 +7,7 @@ from sqlalchemy import text
 from dotenv import load_dotenv
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.utils import secure_filename
-from flask import Flask, Response, send_file
+from flask import Flask, Response, abort, send_file
 from flask import render_template, request, session, redirect, flash, url_for, jsonify
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -158,15 +159,24 @@ def settings():
 @check_login
 def action_commands():
     """For handling different actions"""
+    print(session['csrf_token'], request.args, request.form)
+
+    # ---------- CSRF TOKEN CHECK ----------
+    if session["csrf_token"] != request.form["csrf_token"]:
+        logging.error("CSRF FAILED")
+        abort(403)
+        return redirect("/settings")
 
     # ---------- SONG DELETION ----------
-    if request.method == "DELETE" and "delete_song" in request.args:
+    if request.form.get("request_type") == "delete_song":
         try:
-            song_id = int(bleach.clean(request.args.get("delete_song")))
+            song_id = int(request.form['delete_song'])
+            # output not used because flask renders json if used
             delete_song_by_id(song_id)
+            return redirect("/home")
         except Exception as e:
             logging.error(log_user(session["username"], e))
-            return jsonify("Something went wrong", 500)
+            return jsonify("Something went wrong when deleting song", 500)
 
     # ---------- ADMIN CONTROLS ----------
     if request.form.get("request_type") == "admin-command" and is_admin(
@@ -191,15 +201,14 @@ def action_commands():
             update_user_password(session["user_id"], session["username"], _new_password)
             flash("Password updated", "success")
             logging.info(log_user(session["username"], "Changed password"))
-            return jsonify("Password changed succesfully", 200)
         except Exception as e:
             logging.error(log_user(session["username"], e))
-        return redirect("/settings")
 
     # ---------- ACCOUNT DELETION ----------
     elif request.form.get("request_type") == "account_delete":
         try:
-            return delete_user_account(session["user_id"], session["username"])
+            delete_user_account(session["user_id"], session["username"])
+            return redirect("/")
         except Exception as e:
             logging.error(log_user(session["username"], e))
         return redirect("/settings")
@@ -215,7 +224,7 @@ def action_commands():
         except Exception as e:
             logging.error(log_user(session["username"], e))
             return jsonify("Something went wrong", 500)
-    return redirect("/setting")
+    return redirect("/settings")
 
 
 # ********** ACTION HELPER FUNCTIONS **********
@@ -243,13 +252,12 @@ def update_user_password(user_id, username, _new_password) -> Response:
     return jsonify("Password changed succesfully", 200)
 
 
-def delete_user_account(user_id: int, username: str) -> Response:
+def delete_user_account(user_id: int, username: str):
     sql = SQL_DELETE_ACCOUNT
     db.session.execute(sql, {"username": username, "user_id": user_id})
     db.session.commit()
     logging.info(log_user(session["username"], "User deleted"))
     del session["username"]
-    return redirect("/")
 
 
 def change_song_publicity(song_id, user_id, is_public) -> Response:
@@ -360,6 +368,9 @@ def login():
         return "User not found"
     # Add user_id to jwt token
     session["user_id"] = user[0]
+
+    session["csrf_token"] = secrets.token_hex(16)
+
     if check_password_hash(user[1], password):
         session["username"] = username
         logging.info(log_user(username, "login"))
@@ -491,7 +502,6 @@ def upload_file():
 
         # check if the post request has the file part
         if "file" not in request.files:
-            # TODO: flash not implemented in the frontend
             flash("No file part")
             return redirect(request.url)
 
@@ -506,7 +516,6 @@ def upload_file():
         if not is_valid_name(song_name):
             return "Song name is not valid"
 
-        # TODO don't accept empty name
         if song_description == "":
             song_description = None
 
@@ -523,7 +532,6 @@ def upload_file():
             if os.path.exists(filepath):
                 filename = find_new_filename(path, filename)
 
-            # TODO:TODO:TODO add is_public to the query
             db.session.execute(
                 SQL_FILE_UPLOAD,
                 {
