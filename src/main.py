@@ -13,24 +13,39 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from .schemas import VoteSchema
 from .myenums import VoteType, AcceptedFileTypes
 from .utils import (
-    check_login,
     find_new_filename,
-    is_admin,
-    is_song_deleted,
-    is_valid_name,
-    log_user,
     set_signup_state,
     set_upload_state,
     get_signup_state,
     get_upload_state,
+    is_song_deleted,
     get_user_likes,
-    check_vote,
+    is_valid_name,
     setup_logging,
     songs_appData,
+    check_login,
+    check_vote,
+    is_admin,
+    log_user,
 )
 from .sql_commands import (
-    SQL_FILE_UPLOAD,
+    SQL_VOTE_UPDATE_EXISTING_VOTE,
+    SQL_VOTE_UPDATE_SONG_METADATA,
     SQL_FETCH_MESSAGES_ON_SONG,
+    SQL_CHECK_USERNAME_EXISTS,
+    SQL_VOTE_INSERT_NEW_VOTE,
+    SQL_UPDATE_SONG_METADATA,
+    SQL_GET_SONG_FILEPATH,
+    SQL_GET_SONGS_DEFAULT,
+    SQL_CHANGE_PUBLICITY,
+    SQL_CREATE_NEW_USER,
+    SQL_UPDATE_PASSWORD,
+    SQL_DELETE_ACCOUNT,
+    SQL_SEND_MESSAGE,
+    SQL_DELETE_SONG,
+    SQL_FILE_UPLOAD,
+    SQL_USER_COUNT,
+    SQL_LOGIN,
 )
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
@@ -79,11 +94,9 @@ def index():
 def home():
     songs = get_songs(13, is_public=True)
     likes = get_user_likes(db, session["user_id"])
-
     # Data to be put into appData
     appData_songs = songs_appData(songs)
     messages = get_messages()
-
     return render_template(
         "home.html",
         songs=songs,
@@ -98,11 +111,9 @@ def home():
 def explore():
     songs = get_songs()
     likes = get_user_likes(db, session["user_id"])
-
     # Data to be put into appData
     appData_songs = songs_appData(songs)
     messages = get_messages()
-
     return render_template(
         "explore.html",
         songs=songs,
@@ -117,11 +128,9 @@ def explore():
 def library():
     songs = get_songs(user_id=session["user_id"], is_public=None)
     likes = get_user_likes(db, session["user_id"])
-
     # Data to be put into appData
     appData_songs = songs_appData(songs)
     messages = get_messages()
-
     return render_template(
         "library.html",
         songs=songs,
@@ -149,34 +158,17 @@ def settings():
 @check_login
 def action_commands():
     """For handling different actions"""
+
+    # ---------- SONG DELETION ----------
     if request.method == "DELETE" and "delete_song" in request.args:
-        """To handle song deletion requests"""
         try:
-            # TODO: logging
             song_id = int(bleach.clean(request.args.get("delete_song")))
-            assert isinstance(song_id, int)
-
-            sql = text(
-                """
-                UPDATE songs
-                SET song_name = '[deleted]', song_description = '[deleted]'
-                WHERE id = :song_id AND id IN (
-                    SELECT song_id
-                    FROM uploads
-                    WHERE user_id = :user_id
-                );
-            """
-            )
-
-            db.session.execute(sql, {"user_id": session["user_id"], "song_id": song_id})
-            db.session.commit()
-
-            return jsonify("Song deleted succesfully", 200)
-
+            delete_song_by_id(song_id)
         except Exception as e:
             logging.error(log_user(session["username"], e))
             return jsonify("Something went wrong", 500)
 
+    # ---------- ADMIN CONTROLS ----------
     if request.form.get("request_type") == "admin-command" and is_admin(
         db, session["user_id"]
     ):
@@ -191,97 +183,102 @@ def action_commands():
 
         return redirect("/settings")
 
+    # ---------- PASSWORD RESET ----------
     elif request.form.get("request_type") == "password_reset":
-        # TODO: reset password
         try:
             _new_password = bleach.clean(request.form["password"])
-            hashed_password = generate_password_hash(_new_password)
-            sql = text(
-                """
-                UPDATE users
-                SET password=:hashed_password
-                WHERE username=:username AND id=:user_id"""
-            )
-            db.session.execute(
-                sql,
-                {
-                    "hashed_password": hashed_password,
-                    "username": session["username"],
-                    "user_id": session["user_id"],
-                },
-            )
-            db.session.commit()
+            # output not used because flask renders json if used
+            update_user_password(session["user_id"], session["username"], _new_password)
             flash("Password updated", "success")
             logging.info(log_user(session["username"], "Changed password"))
-
+            return jsonify("Password changed succesfully", 200)
         except Exception as e:
             logging.error(log_user(session["username"], e))
         return redirect("/settings")
 
+    # ---------- ACCOUNT DELETION ----------
     elif request.form.get("request_type") == "account_delete":
+        try:
+            return delete_user_account(session["user_id"], session["username"])
+        except Exception as e:
+            logging.error(log_user(session["username"], e))
+        return redirect("/settings")
 
-        sql = text(
-            """
-        UPDATE users
-        SET username = '[deleted]',
-            password = '[deleted]'
-        WHERE username = :username AND id = :user_id
-        """
-        )
-
-        db.session.execute(
-            sql, {"username": session["username"], "user_id": session["user_id"]}
-        )
-
-        db.session.commit()
-
-        logging.info(log_user(session["username"], "User deleted"))
-        del session["username"]
-        return redirect("/")
-
+    # ---------- SONG PUBLIC/PRIVATE CHANGE ----------
     elif is_public := request.form.get("is_public_song"):
         is_public = {"true": True, "false": False}.get(is_public, None)
         assert is_public is not None
-
-        sql = """
-            UPDATE songs s
-            SET is_public = :is_public
-            FROM uploads u
-            WHERE (s.id = :song_id) AND 
-                  (s.id = u.song_id) AND 
-                  (u.user_id = :user_id);
-        """
-
-        db.session.execute(
-            text(sql),
-            {
-                "is_public": is_public,
-                "song_id": request.args["song_id"],
-                "user_id": session["user_id"],
-            },
-        )
-        db.session.commit()
-
-        logging.info(
-            log_user(
-                session["username"],
-                "Changed song rigths",
-                song_id=request.args["song_id"],
-                is_public=is_public,
+        try:
+            return change_song_publicity(
+                request.args["song_id"], session["user_id"], is_public
             )
-        )
-
-        return jsonify("Form processed successfully", 200)
+        except Exception as e:
+            logging.error(log_user(session["username"], e))
+            return jsonify("Something went wrong", 500)
     return redirect("/setting")
+
+
+# ********** ACTION HELPER FUNCTIONS **********
+def delete_song_by_id(song_id) -> Response:
+    assert isinstance(song_id, int)
+    sql = SQL_DELETE_SONG
+    db.session.execute(sql, {"user_id": session["user_id"], "song_id": song_id})
+    db.session.commit()
+    logging.info(log_user(session["username"], "Deleted song %s" % song_id))
+    return jsonify("Song deleted succesfully", 200)
+
+
+def update_user_password(user_id, username, _new_password) -> Response:
+    hashed_password = generate_password_hash(_new_password)
+    sql = SQL_UPDATE_PASSWORD
+    db.session.execute(
+        sql,
+        {
+            "hashed_password": hashed_password,
+            "username": username,
+            "user_id": user_id,
+        },
+    )
+    db.session.commit()
+    return jsonify("Password changed succesfully", 200)
+
+
+def delete_user_account(user_id: int, username: str) -> Response:
+    sql = SQL_DELETE_ACCOUNT
+    db.session.execute(sql, {"username": username, "user_id": user_id})
+    db.session.commit()
+    logging.info(log_user(session["username"], "User deleted"))
+    del session["username"]
+    return redirect("/")
+
+
+def change_song_publicity(song_id, user_id, is_public) -> Response:
+    sql = SQL_CHANGE_PUBLICITY
+    db.session.execute(
+        sql,
+        {
+            "is_public": is_public,
+            "song_id": song_id,
+            "user_id": user_id,
+        },
+    )
+    db.session.commit()
+    logging.info(
+        log_user(
+            session["username"],
+            "Changed song publicity to %s" % is_public,
+            song_id=song_id,
+            is_public=is_public,
+        )
+    )
+    return jsonify("Form processed successfully", 200)
 
 
 @app.route("/messages", defaults={"song_id": None}, strict_slashes=False)
 @app.route("/messages/<path:song_id>")
 @check_login
 def get_messages(song_id=None):
-
     result = db.session.execute(SQL_FETCH_MESSAGES_ON_SONG, {"song_id": song_id})
-
     messages = result.fetchall()
     return [
         {
@@ -297,45 +294,26 @@ def get_messages(song_id=None):
 def get_songs(
     n: int | None = None, is_public: bool | None = True, user_id: int | None = None
 ):
-    sql = """SELECT songs.*, song_metadata.*, u.user_id
-             FROM songs
-             LEFT JOIN song_metadata ON songs.id = song_metadata.song_id
-             LEFT JOIN uploads u ON u.song_id = songs.id
-             WHERE (:user_id IS NULL OR u.user_id = :user_id)
-             AND (:is_public IS NULL OR songs.is_public = :is_public)
-             AND (songs.song_name <> '[deleted]')
-             ORDER BY (song_metadata.upvote - song_metadata.downvote) DESC
-    """
+    sql = SQL_GET_SONGS_DEFAULT
     params = {"user_id": user_id, "is_public": is_public}
     if n:
         sql += "\nLIMIT :limit"
         params["limit"] = n
-
     result = db.session.execute(text(sql), params)
     songs = result.fetchall()
-
     return songs
 
 
 @app.route("/send/<path:song_id>", methods=["POST"])
 @check_login
 def send(song_id):
+    """Comment on a song route"""
     assert song_id == request.view_args["song_id"]
     song_id = bleach.clean(song_id)
-
     content = bleach.clean(request.form["content"])
     username = bleach.clean(session["username"])
 
-    sql = text(
-        """INSERT INTO messages (song_id, user_id, upload_time, content)
-    SELECT :song_id, id, NOW(), :content FROM users WHERE username = :username;
-
-    UPDATE song_metadata
-    SET comments = comments + 1 
-    WHERE song_id = :song_id;
-    """
-    )
-
+    sql = SQL_SEND_MESSAGE
     try:
         db.session.execute(
             sql, {"username": username, "song_id": song_id, "content": content}
@@ -348,6 +326,7 @@ def send(song_id):
 
     result = db.session.execute(SQL_FETCH_MESSAGES_ON_SONG, {"song_id": song_id})
     messages = result.fetchall()
+
     # Dynamic comment loading -> music doesn't stop
     response = ""
     for message in messages:
@@ -372,24 +351,18 @@ def send(song_id):
 
 @app.route("/login", methods=["POST"])
 def login():
-
     username = bleach.clean(request.form["username"])
     password = bleach.clean(request.form["password"])
-
-    sql = text("SELECT id, password FROM users WHERE username=:username")
+    sql = SQL_LOGIN
     result = db.session.execute(sql, {"username": username})
     user = result.fetchone()
-
     if not user:
         return "User not found"
-
     # Add user_id to jwt token
     session["user_id"] = user[0]
-
     if check_password_hash(user[1], password):
         session["username"] = username
         logging.info(log_user(username, "login"))
-
     return redirect("/home")
 
 
@@ -403,41 +376,49 @@ def logout():
 
 @app.route("/signup", methods=["POST"])
 def signup():
-    # Check if signup is currently closed
-    if not get_signup_state(db):
-        return "Signup closed by admin"
+    try:
+        # Check if signup is currently closed
+        if not get_signup_state(db):
+            return "Signup closed by admin"
 
-    username = bleach.clean(request.form["username"]).strip()
-    if not is_valid_name(username):
-        flash("Username is not valid")
-        return redirect("/")
+        username = bleach.clean(request.form["username"]).strip()
+        if not is_valid_name(username):
+            flash("Username is not valid")
+            return redirect("/")
 
-    _password = bleach.clean(request.form["password"])
-    hash_pass = generate_password_hash(_password)
+        _password = bleach.clean(request.form["password"])
+        hash_pass = generate_password_hash(_password)
 
-    # Check if username is taken
-    sql = text("SELECT id, password FROM users WHERE username=:username")
-    result = db.session.execute(sql, {"username": username})
-    user = result.fetchone()
+        # Check if first user - for admin priv
+        result = db.session.execute(SQL_USER_COUNT)
+        row_count = result.fetchone()[0]
+        role = "admin" if row_count == 0 else "user"
 
-    if user:
-        return "User already exists"
+        # Check if username is taken
+        sql = SQL_CHECK_USERNAME_EXISTS
+        result = db.session.execute(sql, {"username": username})
+        user = result.fetchone()
 
-    sql = text(
-        "INSERT INTO users (username, password, role) VALUES (:username, :password, 'user')"
-    )
+        if user:
+            return "User already exists"
 
-    db.session.execute(sql, {"username": username, "password": hash_pass})
-    db.session.commit()
+        sql = SQL_CREATE_NEW_USER
+        db.session.execute(
+            sql, {"username": username, "password": hash_pass, "role": role}
+        )
+        db.session.commit()
+        logging.info(log_user(username, "signup"))
 
-    logging.info(log_user(username, "signup"))
-
+    except Exception as e:
+        logging.error(log_user(session["username"], e))
+        return jsonify("Something went wrong", 500)
     return redirect("/")
 
 
 @app.route("/v", methods=["POST"])
 @check_login
 def register_vote():
+    """Route for votes"""
     d = json.loads(request.data)
     # Validate the model
     validatedModel = VoteSchema(**d)
@@ -461,12 +442,7 @@ def process_voting(voteModel: VoteSchema) -> str:
 
     if not previous_vote:
         # Insert new vote
-        sql = """
-        -- Insert to likes
-        INSERT INTO likes (user_id, target_id, target_type, vote_type)
-        VALUES (:user_id, :target_id, :target_type, :vote_type);
-
-        """
+        sql = SQL_VOTE_INSERT_NEW_VOTE
     elif previous_vote == voteModel.type:
         return (
             json.dumps({"message": "Same vote already registered"}),
@@ -475,29 +451,11 @@ def process_voting(voteModel: VoteSchema) -> str:
         )
     else:
         # Update existing vote
-        sql = """
-        -- Update likes
-        UPDATE likes
-        SET vote_type = :vote_type
-        WHERE user_id = :user_id AND target_id = :target_id AND target_type = 'song';
-
-        -- Adjust song_metadata for the old vote
-        UPDATE song_metadata
-        SET {prev_vote_type} = {prev_vote_type} - 1
-        WHERE song_id = :target_id;
-
-        """.format(
+        sql = SQL_VOTE_UPDATE_EXISTING_VOTE.format(
             prev_vote_type=previous_vote.value, vote_type=vote_type
         )
 
-    sql += """
-        -- Update song_metadata with the new vote
-        UPDATE song_metadata
-        SET {vote_type} = {vote_type} + 1
-        WHERE song_id = :target_id;
-        """.format(
-        vote_type=vote_type
-    )
+    sql += SQL_VOTE_UPDATE_SONG_METADATA.format(vote_type=vote_type)
 
     params = {
         "user_id": user_id,
@@ -509,7 +467,6 @@ def process_voting(voteModel: VoteSchema) -> str:
     try:
         db.session.execute(text(sql), params=params)
         db.session.commit()
-
         return json.dumps({"success": True}), 200, {"ContentType": "application/json"}
     except Exception as e:
         logging.error(e)
@@ -529,7 +486,6 @@ def allowed_file(filetype):
 def upload_file():
 
     if request.method == "POST":
-
         if not get_upload_state(db):
             return "Upload closed by admin"
 
@@ -540,7 +496,6 @@ def upload_file():
             return redirect(request.url)
 
         file = request.files["file"]
-
         username = bleach.clean(session["username"])
         song_name = bleach.clean(request.form["songName"]).strip()
         song_description = bleach.clean(request.form.get("description", None))
@@ -583,7 +538,6 @@ def upload_file():
             db.session.commit()
 
             request.files["file"].save(os.path.join(path, filename))
-            # TODO: -maybe useless redirect - Anyway its wrong
             return redirect(url_for("upload_file", filename=filename))
     return render_template("/upload.html")
 
@@ -596,12 +550,7 @@ def stream_music(music_id):
     if is_song_deleted(db, music_id):
         return jsonify("Song is deleted")
 
-    sql = text(
-        """
-        SELECT filepath, filename FROM uploads
-        WHERE song_id = :song_id;
-        """
-    )
+    sql = SQL_GET_SONG_FILEPATH
     result = db.session.execute(sql, {"song_id": music_id})
     filepath, filename = result.fetchone()
 
@@ -611,10 +560,8 @@ def stream_music(music_id):
         filename = "/data/" + filename
 
     if not filepath or not filename:
-
         err_msg = "Song not found " + filename
         logging.error(err_msg)
-
         return (
             json.dumps({"success": False, "error": err_msg}),
             500,
@@ -622,17 +569,9 @@ def stream_music(music_id):
         )
 
     logging.info(log_user(session["username"], "Streaming song", song_name=filename))
-    sql = text(
-        """
-        UPDATE song_metadata
-        SET plays = plays + 1
-        WHERE song_id = :song_id
-    """
-    )
-
+    sql = SQL_UPDATE_SONG_METADATA
     db.session.execute(sql, {"song_id": music_id})
     db.session.commit()
-
     return send_file(filepath + filename, mimetype="audio/mp3")
 
 
