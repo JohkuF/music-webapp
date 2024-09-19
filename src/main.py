@@ -30,11 +30,22 @@ from .utils import (
 )
 from .sql_commands import (
     SQL_CHANGE_PUBLICITY,
+    SQL_CHECK_USERNAME_EXISTS,
+    SQL_CREATE_NEW_USER,
     SQL_DELETE_ACCOUNT,
     SQL_DELETE_SONG,
     SQL_FILE_UPLOAD,
     SQL_FETCH_MESSAGES_ON_SONG,
+    SQL_GET_SONG_FILEPATH,
+    SQL_GET_SONGS_DEFAULT,
+    SQL_LOGIN,
+    SQL_SEND_MESSAGE,
     SQL_UPDATE_PASSWORD,
+    SQL_UPDATE_SONG_METADATA,
+    SQL_USER_COUNT,
+    SQL_VOTE_INSERT_NEW_VOTE,
+    SQL_VOTE_UPDATE_EXISTING_VOTE,
+    SQL_VOTE_UPDATE_SONG_METADATA,
 )
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
@@ -263,16 +274,11 @@ def change_song_publicity(song_id, user_id, is_public) -> Response:
     return jsonify("Form processed successfully", 200)
 
 
-# ********** ACTION HELPER FUNCTIONS **********
-
-
 @app.route("/messages", defaults={"song_id": None}, strict_slashes=False)
 @app.route("/messages/<path:song_id>")
 @check_login
 def get_messages(song_id=None):
-
     result = db.session.execute(SQL_FETCH_MESSAGES_ON_SONG, {"song_id": song_id})
-
     messages = result.fetchall()
     return [
         {
@@ -284,49 +290,29 @@ def get_messages(song_id=None):
         for message in messages
     ]
 
-
 def get_songs(
     n: int | None = None, is_public: bool | None = True, user_id: int | None = None
 ):
-    sql = """SELECT songs.*, song_metadata.*, u.user_id
-             FROM songs
-             LEFT JOIN song_metadata ON songs.id = song_metadata.song_id
-             LEFT JOIN uploads u ON u.song_id = songs.id
-             WHERE (:user_id IS NULL OR u.user_id = :user_id)
-             AND (:is_public IS NULL OR songs.is_public = :is_public)
-             AND (songs.song_name <> '[deleted]')
-             ORDER BY (song_metadata.upvote - song_metadata.downvote) DESC
-    """
+    sql = SQL_GET_SONGS_DEFAULT
     params = {"user_id": user_id, "is_public": is_public}
     if n:
         sql += "\nLIMIT :limit"
         params["limit"] = n
-
     result = db.session.execute(text(sql), params)
     songs = result.fetchall()
-
     return songs
 
 
 @app.route("/send/<path:song_id>", methods=["POST"])
 @check_login
 def send(song_id):
+    """Comment on a song route"""
     assert song_id == request.view_args["song_id"]
     song_id = bleach.clean(song_id)
-
     content = bleach.clean(request.form["content"])
     username = bleach.clean(session["username"])
 
-    sql = text(
-        """INSERT INTO messages (song_id, user_id, upload_time, content)
-    SELECT :song_id, id, NOW(), :content FROM users WHERE username = :username;
-
-    UPDATE song_metadata
-    SET comments = comments + 1 
-    WHERE song_id = :song_id;
-    """
-    )
-
+    sql = SQL_SEND_MESSAGE
     try:
         db.session.execute(
             sql, {"username": username, "song_id": song_id, "content": content}
@@ -339,6 +325,7 @@ def send(song_id):
 
     result = db.session.execute(SQL_FETCH_MESSAGES_ON_SONG, {"song_id": song_id})
     messages = result.fetchall()
+
     # Dynamic comment loading -> music doesn't stop
     response = ""
     for message in messages:
@@ -363,26 +350,19 @@ def send(song_id):
 
 @app.route("/login", methods=["POST"])
 def login():
-
     username = bleach.clean(request.form["username"])
     password = bleach.clean(request.form["password"])
-
-    sql = text("SELECT id, password FROM users WHERE username=:username")
+    sql = SQL_LOGIN
     result = db.session.execute(sql, {"username": username})
     user = result.fetchone()
-
     if not user:
         return "User not found"
-
     # Add user_id to jwt token
     session["user_id"] = user[0]
-
     if check_password_hash(user[1], password):
         session["username"] = username
         logging.info(log_user(username, "login"))
-
     return redirect("/home")
-
 
 @app.route("/logout", methods=["POST"])
 @check_login
@@ -391,49 +371,48 @@ def logout():
     del session["username"]
     return redirect("/")
 
-
 @app.route("/signup", methods=["POST"])
 def signup():
-    # Check if signup is currently closed
-    if not get_signup_state(db):
-        return "Signup closed by admin"
+    try:
+        # Check if signup is currently closed
+        if not get_signup_state(db):
+            return "Signup closed by admin"
 
-    username = bleach.clean(request.form["username"]).strip()
-    if not is_valid_name(username):
-        flash("Username is not valid")
-        return redirect("/")
+        username = bleach.clean(request.form["username"]).strip()
+        if not is_valid_name(username):
+            flash("Username is not valid")
+            return redirect("/")
 
-    _password = bleach.clean(request.form["password"])
-    hash_pass = generate_password_hash(_password)
+        _password = bleach.clean(request.form["password"])
+        hash_pass = generate_password_hash(_password)
 
-    # Check if first user - for admin priv
-    result = db.session.execute(text("SELECT COUNT(*) AS row_count FROM users;"))
-    row_count = result.fetchone()[0]
-    role = "admin" if row_count == 0 else "user"
+        # Check if first user - for admin priv
+        result = db.session.execute(SQL_USER_COUNT)
+        row_count = result.fetchone()[0]
+        role = "admin" if row_count == 0 else "user"
 
-    # Check if username is taken
-    sql = text("SELECT id, password FROM users WHERE username=:username")
-    result = db.session.execute(sql, {"username": username})
-    user = result.fetchone()
+        # Check if username is taken
+        sql = SQL_CHECK_USERNAME_EXISTS
+        result = db.session.execute(sql, {"username": username})
+        user = result.fetchone()
 
-    if user:
-        return "User already exists"
+        if user:
+            return "User already exists"
 
-    sql = text(
-        "INSERT INTO users (username, password, role) VALUES (:username, :password, :role)"
-    )
+        sql = SQL_CREATE_NEW_USER
+        db.session.execute(sql, {"username": username, "password": hash_pass, "role": role})
+        db.session.commit()
+        logging.info(log_user(username, "signup"))
 
-    db.session.execute(sql, {"username": username, "password": hash_pass, "role": role})
-    db.session.commit()
-
-    logging.info(log_user(username, "signup"))
-
+    except Exception as e:
+        logging.error(log_user(session["username"], e))
+        return jsonify("Something went wrong", 500)
     return redirect("/")
-
 
 @app.route("/v", methods=["POST"])
 @check_login
 def register_vote():
+    """Route for votes"""
     d = json.loads(request.data)
     # Validate the model
     validatedModel = VoteSchema(**d)
@@ -457,12 +436,7 @@ def process_voting(voteModel: VoteSchema) -> str:
 
     if not previous_vote:
         # Insert new vote
-        sql = """
-        -- Insert to likes
-        INSERT INTO likes (user_id, target_id, target_type, vote_type)
-        VALUES (:user_id, :target_id, :target_type, :vote_type);
-
-        """
+        sql = SQL_VOTE_INSERT_NEW_VOTE
     elif previous_vote == voteModel.type:
         return (
             json.dumps({"message": "Same vote already registered"}),
@@ -471,27 +445,11 @@ def process_voting(voteModel: VoteSchema) -> str:
         )
     else:
         # Update existing vote
-        sql = """
-        -- Update likes
-        UPDATE likes
-        SET vote_type = :vote_type
-        WHERE user_id = :user_id AND target_id = :target_id AND target_type = 'song';
-
-        -- Adjust song_metadata for the old vote
-        UPDATE song_metadata
-        SET {prev_vote_type} = {prev_vote_type} - 1
-        WHERE song_id = :target_id;
-
-        """.format(
+        sql = SQL_VOTE_UPDATE_EXISTING_VOTE.format(
             prev_vote_type=previous_vote.value, vote_type=vote_type
         )
 
-    sql += """
-        -- Update song_metadata with the new vote
-        UPDATE song_metadata
-        SET {vote_type} = {vote_type} + 1
-        WHERE song_id = :target_id;
-        """.format(
+    sql += SQL_VOTE_UPDATE_SONG_METADATA.format(
         vote_type=vote_type
     )
 
@@ -505,7 +463,6 @@ def process_voting(voteModel: VoteSchema) -> str:
     try:
         db.session.execute(text(sql), params=params)
         db.session.commit()
-
         return json.dumps({"success": True}), 200, {"ContentType": "application/json"}
     except Exception as e:
         logging.error(e)
@@ -525,7 +482,6 @@ def allowed_file(filetype):
 def upload_file():
 
     if request.method == "POST":
-
         if not get_upload_state(db):
             return "Upload closed by admin"
 
@@ -536,7 +492,6 @@ def upload_file():
             return redirect(request.url)
 
         file = request.files["file"]
-
         username = bleach.clean(session["username"])
         song_name = bleach.clean(request.form["songName"]).strip()
         song_description = bleach.clean(request.form.get("description", None))
@@ -579,7 +534,6 @@ def upload_file():
             db.session.commit()
 
             request.files["file"].save(os.path.join(path, filename))
-            # TODO: -maybe useless redirect - Anyway its wrong
             return redirect(url_for("upload_file", filename=filename))
     return render_template("/upload.html")
 
@@ -592,12 +546,7 @@ def stream_music(music_id):
     if is_song_deleted(db, music_id):
         return jsonify("Song is deleted")
 
-    sql = text(
-        """
-        SELECT filepath, filename FROM uploads
-        WHERE song_id = :song_id;
-        """
-    )
+    sql = SQL_GET_SONG_FILEPATH
     result = db.session.execute(sql, {"song_id": music_id})
     filepath, filename = result.fetchone()
 
@@ -607,10 +556,8 @@ def stream_music(music_id):
         filename = "/data/" + filename
 
     if not filepath or not filename:
-
         err_msg = "Song not found " + filename
         logging.error(err_msg)
-
         return (
             json.dumps({"success": False, "error": err_msg}),
             500,
@@ -618,19 +565,10 @@ def stream_music(music_id):
         )
 
     logging.info(log_user(session["username"], "Streaming song", song_name=filename))
-    sql = text(
-        """
-        UPDATE song_metadata
-        SET plays = plays + 1
-        WHERE song_id = :song_id
-    """
-    )
-
+    sql = SQL_UPDATE_SONG_METADATA
     db.session.execute(sql, {"song_id": music_id})
     db.session.commit()
-
     return send_file(filepath + filename, mimetype="audio/mp3")
-
 
 if __name__ == "__main__":
     app.debug = True
