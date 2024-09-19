@@ -25,7 +25,7 @@ from .utils import (
     get_upload_state,
     get_user_likes,
     check_vote,
-    setup_login,
+    setup_logging,
     songs_appData,
 )
 from .sql_commands import (
@@ -44,7 +44,7 @@ POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
 POSTGRES_USER = os.getenv("POSTGRES_USER")
 IS_DOCKER = os.getenv("IS_DOCKER", False)
 
-setup_login(IS_DOCKER)
+setup_logging(IS_DOCKER)
 
 postgres_uri = (
     f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@postgres:5432/musicApp"

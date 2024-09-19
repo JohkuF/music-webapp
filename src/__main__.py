@@ -2,7 +2,7 @@ import os
 import json
 import logging
 
-from src.utils import setup_login
+from src.utils import setup_logging
 from .main import IS_DOCKER, app
 
 if __name__ == "__main__":
@@ -14,6 +14,6 @@ if __name__ == "__main__":
     )
     app.debug = True
 
-    setup_login(IS_DOCKER)
+    setup_logging(IS_DOCKER)
 
     app.run(port=8080)

@@ -8,29 +8,42 @@ from flask import session, redirect
 from .schemas import VoteSchema
 from .myenums import VoteType
 
+class JsonFormatter(logging.Formatter):
+    def format(self, record):
+        log_record = {
+            "timestamp": self.formatTime(record, self.datefmt),
+            "level": record.levelname,
+        }
+        
+        if isinstance(record.msg, dict):
+            log_record.update(record.msg)
+        else:
+            log_record["message"] = record.getMessage()
+
+        return json.dumps(log_record)
+
+def setup_logging(IS_DOCKER):
+    log_path = "/logs/music-webapp.log" if IS_DOCKER else "logi.log"
+    
+    # Create handlers
+    file_handler = logging.FileHandler(log_path)
+    stream_handler = logging.StreamHandler()
+    
+    # Formatters
+    json_formatter = JsonFormatter()
+    file_handler.setFormatter(json_formatter)
+    stream_handler.setFormatter(json_formatter)
+    
+    # Configure the logging system
+    logging.basicConfig(
+        level=logging.DEBUG,
+        handlers=[file_handler, stream_handler]
+    )
 
 def is_song_deleted(db, song_id: int) -> bool:
     sql = text("SELECT song_name FROM songs WHERE id = :song_id")
     result = db.session.execute(sql, {"song_id": song_id}).fetchone()
     return True if "[deleted]" in result else False
-
-
-def setup_login(IS_DOCKER):
-    log_path = "/logs/music-webapp.log" if IS_DOCKER else "logi.log"
-    file_handler = logging.FileHandler(log_path)
-
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format=json.dumps(
-            {
-                "timestamp": "%(asctime)s",
-                "level": "%(levelname)s",
-                "message": "%(message)s",
-            }
-        ),
-        handlers=[logging.StreamHandler(), file_handler],
-    )
-
 
 def check_login(func):
     """
