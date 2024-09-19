@@ -353,7 +353,6 @@ def send(song_id):
 
 
 @app.route("/login", methods=["POST"])
-@check_csrf_token
 def login():
     username = bleach.clean(request.form["username"])
     password = bleach.clean(request.form["password"])
