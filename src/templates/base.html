@@ -66,8 +66,7 @@
               </a>
             </li>
             <li class="nav-item">
-              <form class="logout" action="/logout" method="post">
-                <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
+              <form class="logout" action="/logout" method="get">
                 <button class="nav-link" type="submit">Logout</button>
               </form>
             </li>

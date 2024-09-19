@@ -373,9 +373,8 @@ def login():
     return redirect("/home")
 
 
-@app.route("/logout", methods=["POST"])
+@app.route("/logout", methods=["GET"])
 @check_login
-@check_csrf_token
 def logout():
     logging.info(log_user(session["username"], "logout"))
     del session["username"]
